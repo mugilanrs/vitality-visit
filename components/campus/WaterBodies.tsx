@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { M_WATER } from "@/lib/materials";
 import { designedPondShape } from "@/lib/geometry";
 
@@ -13,7 +14,23 @@ import { designedPondShape } from "@/lib/geometry";
  *   - Residential lake: a soft kidney-bean rather than a plain ellipse
  */
 
+/**
+ * Very subtle water animation — barely-perceptible sine-driven wobble on
+ * the material's envMapIntensity and a hair of colour drift. Reads as calm
+ * moving water without any noisy ripples.
+ */
+function useWaterAnimation() {
+  const ref = useRef({ t: 0 });
+  useFrame((state, dt) => {
+    ref.current.t += dt;
+    const wobble = 0.85 + 0.18 * Math.sin(ref.current.t * 0.4);
+    (M_WATER as THREE.MeshStandardMaterial).envMapIntensity = wobble;
+  });
+}
+
 export default function WaterBodies() {
+  useWaterAnimation();
+
   // Plaza water ring — outer teardrop with an inner hole for the plaza,
   // plus notches carved along the N–S axis so the axis reads as unbroken land.
   const plazaWater = useMemo(() => {

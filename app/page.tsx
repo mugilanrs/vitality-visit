@@ -2,14 +2,16 @@
 
 import { useCallback, useRef, useState } from "react";
 import CampusScene from "@/components/campus/CampusScene";
-import CampusJourney, { type JourneyHandle } from "@/components/campus/CampusJourney";
+import CampusJourney, {
+  type JourneyHandle,
+} from "@/components/campus/CampusJourney";
 import Navigation from "@/components/ui/Navigation";
 
 /**
- * Layered composition:
- *   z0  <CampusScene>   — fixed R3F canvas, non-interactive
- *   z10 <CampusJourney> — transparent scroll container (captures wheel/touch)
- *   z20 <Navigation>    — overlay UI; individual regions opt into pointer-events
+ * Layered composition (window-scroll mode):
+ *   fixed z0  <CampusScene>   — R3F canvas, receives pointer events natively
+ *   in-flow   <CampusJourney> — invisible spacer that gives the page scroll height
+ *   fixed z20 <Navigation>    — overlay UI (pointer-events off by default)
  */
 export default function Home() {
   const [active, setActive] = useState(0);
@@ -20,18 +22,19 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#eaf0f6] text-slate-900">
-      <div className="absolute inset-0 z-0">
+    <>
+      {/* Fixed background scene — receives clicks/hovers via the canvas */}
+      <div className="fixed inset-0 z-0">
         <CampusScene />
       </div>
 
-      <div className="absolute inset-0 z-10">
-        <CampusJourney ref={journeyRef} onActive={setActive} />
-      </div>
+      {/* Scroll spacer — drives journey.progress via window scroll */}
+      <CampusJourney ref={journeyRef} onActive={setActive} />
 
-      <div className="absolute inset-0 z-20 pointer-events-none">
+      {/* Overlay UI */}
+      <div className="fixed inset-0 z-20 pointer-events-none">
         <Navigation active={active} onJump={jumpTo} />
       </div>
-    </main>
+    </>
   );
 }

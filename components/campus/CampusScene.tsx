@@ -1,17 +1,28 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { ContactShadows, SoftShadows } from "@react-three/drei";
 import { Suspense } from "react";
 import * as THREE from "three";
 import CampusCamera from "./CampusCamera";
 import CampusArchitecture from "./CampusArchitecture";
+import CampusHotspots from "./CampusHotspots";
 
 /**
- * Phase 1 scene: clean architectural daylight.
- * - hemisphere (cool sky, warm ground) + high directional key with soft shadows
- * - light Fog for a very subtle horizon fade (NOT FogExp2 — no cyberpunk haze)
- * - ACES tonemap, exposure 1.05 — reads as printed masterplan
- * - Canvas background is a pale gradient, not a photo/render backdrop
+ * Premium architectural daylight.
+ *
+ * Lighting model:
+ *   - Hemisphere: cool sky (#dfe9f3) + warm ground (#e6e1d3) — hero ambient
+ *   - Directional key: high, warm sun tint, casts soft PCF-Soft shadows
+ *   - Directional fill: opposite side, cool tint, no shadow
+ *   - Ambient: barely-there floor tint, keeps under-canopies from going pitch
+ *   - SoftShadows: PCF soft-shadow monkeypatch — reads as premium arch-viz
+ *   - ContactShadows: rounds off the shadow directly under each building
+ *
+ * Renderer:
+ *   - dpr capped at 2 (perf on retina)
+ *   - ACES tonemap, exposure 1.05
+ *   - Fog (not FogExp2) for a whisper of horizon fade
  */
 export default function CampusScene() {
   return (
@@ -27,38 +38,64 @@ export default function CampusScene() {
         }}
         style={{
           background:
-            "linear-gradient(180deg, #eef3f8 0%, #e6ecf2 55%, #dee4ea 100%)",
+            "linear-gradient(180deg, #edf2f8 0%, #e4ebf1 55%, #dbe2e8 100%)",
         }}
         onCreated={({ scene }) => {
-          scene.fog = new THREE.Fog(0xeaf0f6, 34, 62);
+          scene.fog = new THREE.Fog(0xeaf0f6, 36, 68);
         }}
       >
-        {/* Sky/ground ambient — cool up, warm down */}
-        <hemisphereLight args={[0xdfe9f3, 0xe6e1d3, 0.75]} />
+        {/* Premium soft shadows (drei monkeypatches the shadow shader once) */}
+        <SoftShadows size={22} samples={12} focus={0.9} />
+
+        {/* Base ambient — very subtle, only to keep under-canopy shadows readable */}
+        <ambientLight intensity={0.32} color={"#f2ecdd"} />
+
+        {/* Hemisphere — the workhorse for architectural daylight */}
+        <hemisphereLight args={[0xdfe9f3, 0xe6e1d3, 0.78]} />
 
         {/* Sun */}
         <directionalLight
           position={[14, 22, 8]}
-          intensity={1.4}
-          color={"#fff5df"}
+          intensity={1.45}
+          color={"#fff2cf"}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
-          shadow-camera-left={-20}
-          shadow-camera-right={20}
-          shadow-camera-top={20}
-          shadow-camera-bottom={-20}
+          shadow-camera-left={-22}
+          shadow-camera-right={22}
+          shadow-camera-top={22}
+          shadow-camera-bottom={-22}
           shadow-camera-near={0.5}
-          shadow-camera-far={60}
+          shadow-camera-far={68}
           shadow-bias={-0.0005}
+          shadow-normalBias={0.02}
         />
 
-        {/* Very soft fill from the opposite side */}
-        <directionalLight position={[-10, 8, -6]} intensity={0.25} color={"#cad9e8"} />
+        {/* Cool fill from the opposite side */}
+        <directionalLight
+          position={[-10, 9, -6]}
+          intensity={0.32}
+          color={"#c9dbee"}
+        />
 
         <CampusCamera />
+
         <Suspense fallback={null}>
           <CampusArchitecture />
+
+          {/* Contact shadows — soft round shadow blob under the whole model */}
+          <ContactShadows
+            position={[0, 0.02, 0]}
+            opacity={0.4}
+            scale={40}
+            blur={2.4}
+            far={5}
+            resolution={1024}
+            color={"#1c2833"}
+          />
+
+          {/* World-space hotspots for hover/click */}
+          <CampusHotspots />
         </Suspense>
       </Canvas>
     </div>

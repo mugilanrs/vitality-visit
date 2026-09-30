@@ -1,19 +1,40 @@
 /**
- * Shared journey state — kept in a plain mutable object so scroll and
- * camera updates run at 60fps without triggering React re-renders.
- *
- * The scroller updates `progress` (0..N-1). CampusCamera reads it inside
- * useFrame and interpolates between CampusLocation camera states.
+ * Shared journey state — a single source of truth for scroll position,
+ * hover state, and focused stop. Held in a plain mutable object so
+ * scroll + camera + hotspots can read/write at 60fps without React
+ * re-renders. React components subscribe to `activeIndex` / `hoverIndex`
+ * changes via a tiny event emitter.
  */
 
 export type JourneyState = {
-  progress: number;   // 0..N-1
+  /** Continuous scroll-driven progress in [0..N-1]. */
+  progress: number;
+  /** Nearest discrete stop (used for UI panel + active pill). */
   activeIndex: number;
+  /** Currently hovered hotspot, or null. */
+  hoverIndex: number | null;
+  /** True when the user hasn't scrolled yet. */
   overview: boolean;
 };
 
 export const journey: JourneyState = {
   progress: 0,
   activeIndex: 0,
-  overview: false,
+  hoverIndex: null,
+  overview: true,
 };
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function subscribeJourney(fn: Listener) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+/** Broadcast — call after mutating journey.activeIndex or journey.hoverIndex. */
+export function emitJourneyChange() {
+  listeners.forEach((fn) => fn());
+}

@@ -1,17 +1,22 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import Lenis from "lenis";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { N_STOPS } from "@/data/campusLocations";
-import { journey } from "@/lib/journey";
+import { journey, emitJourneyChange } from "@/lib/journey";
 
 /**
- * Full-viewport transparent scroll container. Inner div is N * 100vh tall;
- * scroll position maps to `journey.progress` in [0..N-1], which CampusCamera
- * reads inside useFrame. React state is only updated when the active stop
- * index changes, so scrolling stays 60fps.
+ * WINDOW-scroll journey. The whole page scrolls a tall invisible spacer;
+ * the campus scene is fixed behind it. This lets the canvas receive
+ * hover/click events natively (unblocked by any scroll container).
  *
- * Exposes a `jumpTo(i)` method via forwarded ref so the overlay stepper can
- * scroll to a specific stop through the same source of truth.
+ * Lenis smooths the window wheel/touch. GSAP tweens window.scrollY for
+ * click jumps.
  */
 
 type Props = {
@@ -26,49 +31,94 @@ const CampusJourney = forwardRef<JourneyHandle, Props>(function CampusJourney(
   { onActive },
   ref,
 ) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const lastActive = useRef(0);
+  const lenisRef = useRef<Lenis | null>(null);
 
   useImperativeHandle(ref, () => ({
     jumpTo(i: number) {
-      const el = scrollRef.current;
-      if (!el) return;
-      const max = el.scrollHeight - el.clientHeight;
-      el.scrollTo({
-        top: (i / (N_STOPS - 1)) * max,
-        behavior: "smooth",
-      });
+      const max =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const targetY = (i / (N_STOPS - 1)) * max;
+      const lenis = lenisRef.current;
+      if (lenis) {
+        lenis.scrollTo(targetY, { duration: 1.4 });
+      } else {
+        window.scrollTo({ top: targetY, behavior: "smooth" });
+      }
     },
   }));
 
+  // Lenis on the window
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const lenis = new Lenis({
+      duration: 1.15,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
+      smoothWheel: true,
+      touchMultiplier: 1.4,
+    });
+    lenisRef.current = lenis;
 
+    let raf = 0;
+    function tick(time: number) {
+      lenis.raf(time);
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  // Window scroll → journey.progress
+  useEffect(() => {
     const onScroll = () => {
-      const max = el.scrollHeight - el.clientHeight;
-      const p = max > 0 ? (el.scrollTop / max) * (N_STOPS - 1) : 0;
+      const max =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? (window.scrollY / max) * (N_STOPS - 1) : 0;
       journey.progress = p;
-      journey.overview = false;
+      journey.overview = p < 0.05;
       const idx = Math.max(0, Math.min(N_STOPS - 1, Math.round(p)));
       if (idx !== lastActive.current) {
         lastActive.current = idx;
         journey.activeIndex = idx;
         onActive(idx);
+        emitJourneyChange();
       }
     };
 
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
   }, [onActive]);
 
+  // Hotspot clicks
+  useEffect(() => {
+    function handle(e: Event) {
+      const detail = (e as CustomEvent).detail as { index: number } | undefined;
+      if (!detail) return;
+      const max =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const targetY = (detail.index / (N_STOPS - 1)) * max;
+      const lenis = lenisRef.current;
+      if (lenis) {
+        lenis.scrollTo(targetY, { duration: 1.4 });
+      } else {
+        window.scrollTo({ top: targetY, behavior: "smooth" });
+      }
+    }
+    window.addEventListener("campus-focus", handle);
+    return () => window.removeEventListener("campus-focus", handle);
+  }, []);
+
+  // Invisible scroll-spacer that gives the page its scrollable height.
   return (
     <div
-      ref={scrollRef}
-      className="absolute inset-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <div style={{ height: `${N_STOPS * 100}vh` }} />
-    </div>
+      aria-hidden
+      style={{ height: `${N_STOPS * 100}vh`, pointerEvents: "none" }}
+    />
   );
 });
 

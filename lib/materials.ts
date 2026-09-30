@@ -57,16 +57,29 @@ export const M_ROOF_RIM = new THREE.MeshStandardMaterial({
 
 export const M_TEAL_GLASS = new THREE.MeshStandardMaterial({
   color: COLORS.tealGlass,
-  roughness: 0.18,
-  metalness: 0.55,
+  roughness: 0.22,
+  metalness: 0.65,
   transparent: true,
-  opacity: 0.9,
+  opacity: 0.94,
+  envMapIntensity: 0.75,
 });
 
 export const M_TEAL_GLASS_DEEP = new THREE.MeshStandardMaterial({
   color: COLORS.tealGlassDeep,
-  roughness: 0.22,
-  metalness: 0.5,
+  roughness: 0.25,
+  metalness: 0.6,
+  envMapIntensity: 0.7,
+});
+
+// Highlight tint used when a building is hovered — very subtle emissive lift.
+export const M_TEAL_GLASS_HOVER = new THREE.MeshStandardMaterial({
+  color: COLORS.tealGlass,
+  roughness: 0.2,
+  metalness: 0.65,
+  transparent: true,
+  opacity: 0.94,
+  emissive: COLORS.tealGlass,
+  emissiveIntensity: 0.35,
 });
 
 export const M_CONCRETE_LIGHT = new THREE.MeshStandardMaterial({
@@ -91,10 +104,11 @@ export const M_GRASS = new THREE.MeshStandardMaterial({
 
 export const M_WATER = new THREE.MeshStandardMaterial({
   color: COLORS.waterTurquoise,
-  roughness: 0.12,
-  metalness: 0.6,
+  roughness: 0.15,
+  metalness: 0.75,
   transparent: true,
-  opacity: 0.88,
+  opacity: 0.92,
+  envMapIntensity: 1.1,
 });
 
 export const M_GROUND = new THREE.MeshStandardMaterial({

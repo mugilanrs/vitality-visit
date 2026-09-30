@@ -1,167 +1,340 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { COLORS } from "@/lib/materials";
 
 /**
- * Vegetation: palms clustered around the plaza + residential lake, and a
- * dense outer ring of general trees around the campus perimeter.
+ * Instanced vegetation — real InstancedMesh per species, so ~300+ plants
+ * cost only a handful of draw calls.
  *
- * Uses simple <mesh> per plant with shared BufferGeometries + shared
- * Materials — cheap enough at ~150 items and it renders reliably without
- * the InstancedMesh matrix-timing gotcha we hit earlier.
+ * Species:
+ *   - broadleaf tree: rounded canopy on a short trunk (perimeter ring, inner clusters)
+ *   - narrow tree:    upright conifer-ish (perimeter ring, filler)
+ *   - palm:           radial fronds on a slim trunk (plaza + residential lake rings + boulevard)
+ *   - ornamental:     small pink-blossom tree (plaza edge, entrance flanks)
+ *
+ * Each species picks its own count, positions, and per-instance scale/rotation
+ * jitter so the vegetation never looks tiled or randomly scattered.
  */
 
-const PALM_LEAF_COUNT = 6;
+// ---------------- Merged geometry per species (one BufferGeometry each) ----------------
 
-function usePalmPieces() {
-  return useMemo(() => {
-    const trunk = new THREE.CylinderGeometry(0.06, 0.09, 0.9, 6);
+function mergePreserving(
+  geoms: THREE.BufferGeometry[],
+  colors: THREE.Color[],
+): THREE.BufferGeometry {
+  // Manually merge geoms into one indexed geometry with a per-vertex color
+  // attribute — lets one InstancedMesh with vertexColors carry trunk + canopy.
+  let vertexCount = 0;
+  let indexCount = 0;
+  for (const g of geoms) {
+    vertexCount += g.attributes.position.count;
+    if (g.index) indexCount += g.index.count;
+    else indexCount += g.attributes.position.count;
+  }
+  const positions = new Float32Array(vertexCount * 3);
+  const normals = new Float32Array(vertexCount * 3);
+  const colorAttr = new Float32Array(vertexCount * 3);
+  const indices = new Uint32Array(indexCount);
+
+  let vOffset = 0;
+  let iOffset = 0;
+  geoms.forEach((g, gi) => {
+    g.computeVertexNormals();
+    const pos = g.attributes.position.array as Float32Array;
+    const nrm = g.attributes.normal.array as Float32Array;
+    positions.set(pos, vOffset * 3);
+    normals.set(nrm, vOffset * 3);
+    const c = colors[gi];
+    for (let v = 0; v < g.attributes.position.count; v++) {
+      colorAttr[(vOffset + v) * 3] = c.r;
+      colorAttr[(vOffset + v) * 3 + 1] = c.g;
+      colorAttr[(vOffset + v) * 3 + 2] = c.b;
+    }
+    if (g.index) {
+      const src = g.index.array as ArrayLike<number>;
+      for (let i = 0; i < src.length; i++) {
+        indices[iOffset + i] = src[i] + vOffset;
+      }
+      iOffset += src.length;
+    } else {
+      for (let i = 0; i < g.attributes.position.count; i++) {
+        indices[iOffset + i] = vOffset + i;
+      }
+      iOffset += g.attributes.position.count;
+    }
+    vOffset += g.attributes.position.count;
+  });
+
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  merged.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  merged.setAttribute("color", new THREE.BufferAttribute(colorAttr, 3));
+  merged.setIndex(new THREE.BufferAttribute(indices, 1));
+  return merged;
+}
+
+function makeBroadleafGeometry(): THREE.BufferGeometry {
+  const trunk = new THREE.CylinderGeometry(0.05, 0.09, 0.6, 6);
+  trunk.translate(0, 0.3, 0);
+  const c1 = new THREE.IcosahedronGeometry(0.42, 1);
+  c1.translate(0, 0.82, 0);
+  const c2 = new THREE.IcosahedronGeometry(0.32, 1);
+  c2.translate(0.16, 1.02, -0.1);
+  return mergePreserving(
+    [trunk, c1, c2],
+    [
+      new THREE.Color(COLORS.trunk),
+      new THREE.Color(COLORS.leavesGreen),
+      new THREE.Color("#5aa25e"),
+    ],
+  );
+}
+
+function makeNarrowGeometry(): THREE.BufferGeometry {
+  const trunk = new THREE.CylinderGeometry(0.045, 0.075, 0.5, 6);
+  trunk.translate(0, 0.25, 0);
+  // Elongated conifer — a stack of ovals
+  const c1 = new THREE.SphereGeometry(0.25, 8, 6);
+  c1.scale(1, 1.7, 1);
+  c1.translate(0, 0.85, 0);
+  const c2 = new THREE.SphereGeometry(0.18, 8, 6);
+  c2.scale(1, 1.7, 1);
+  c2.translate(0, 1.25, 0);
+  return mergePreserving(
+    [trunk, c1, c2],
+    [
+      new THREE.Color(COLORS.trunk),
+      new THREE.Color("#4a8f52"),
+      new THREE.Color("#3f7e46"),
+    ],
+  );
+}
+
+function makePalmGeometry(): THREE.BufferGeometry {
+  const geoms: THREE.BufferGeometry[] = [];
+  const colors: THREE.Color[] = [];
+
+  const trunk = new THREE.CylinderGeometry(0.045, 0.075, 0.95, 6);
+  trunk.translate(0, 0.475, 0);
+  geoms.push(trunk);
+  colors.push(new THREE.Color(COLORS.trunk));
+
+  const FRONDS = 7;
+  for (let i = 0; i < FRONDS; i++) {
+    const a = (i / FRONDS) * Math.PI * 2;
     const leaf = new THREE.BoxGeometry(0.05, 0.02, 0.55);
-    return { trunk, leaf };
-  }, []);
+    // Tilt each frond outward and rotate around vertical axis
+    leaf.translate(0, 0, 0.3);
+    leaf.rotateX(-0.35);
+    leaf.rotateY(a);
+    leaf.translate(Math.cos(a) * 0.06, 1.0, Math.sin(a) * 0.06);
+    geoms.push(leaf);
+    colors.push(new THREE.Color(COLORS.palmGreen));
+  }
+  return mergePreserving(geoms, colors);
 }
 
-function useTreePieces() {
-  return useMemo(() => {
-    const trunk = new THREE.CylinderGeometry(0.07, 0.11, 0.65, 6);
-    const canopy = new THREE.IcosahedronGeometry(0.42, 0);
-    const canopy2 = new THREE.IcosahedronGeometry(0.32, 0);
-    return { trunk, canopy, canopy2 };
-  }, []);
+function makeOrnamentalGeometry(): THREE.BufferGeometry {
+  const trunk = new THREE.CylinderGeometry(0.04, 0.06, 0.35, 6);
+  trunk.translate(0, 0.175, 0);
+  const canopy = new THREE.IcosahedronGeometry(0.28, 1);
+  canopy.translate(0, 0.5, 0);
+  const canopy2 = new THREE.IcosahedronGeometry(0.2, 1);
+  canopy2.translate(0.12, 0.62, -0.08);
+  return mergePreserving(
+    [trunk, canopy, canopy2],
+    [
+      new THREE.Color(COLORS.trunk),
+      new THREE.Color(COLORS.blossomPink),
+      new THREE.Color("#f7b6cf"),
+    ],
+  );
 }
 
-// Positions ------------------------------------------------------
+// ---------------- Positions per species ----------------
 
 function palmPositions() {
   const arr: [number, number, number, number][] = [];
-  // Ring around the plaza (centre 0, 6.5), just OUTSIDE the plaza water
-  for (let i = 0; i < 20; i++) {
-    const a = (i / 20) * Math.PI * 2;
-    const rx = 4.5;
-    const rz = 3.8;
+  // Ring around the plaza water (outside)
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2;
+    const rx = 4.6;
+    const rz = 3.9;
     arr.push([Math.cos(a) * rx, 0, 6.5 + Math.sin(a) * rz, a]);
   }
   // Ring around the residential lake
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
     const rx = 3.3;
     const rz = 2.5;
     arr.push([10 + Math.cos(a) * rx, 0, -4 + Math.sin(a) * rz, a]);
   }
-  // Rows along the entrance boulevard, framing the auditorium
-  for (let i = 0; i < 4; i++) {
+  // Twin rows along the entrance boulevard framing the auditorium
+  for (let i = 0; i < 5; i++) {
     for (const side of [-1, 1]) {
-      arr.push([side * 1.7, 0, 9.6 + i * 0.75, 0]);
+      arr.push([side * 1.75, 0, 9.4 + i * 0.7, 0]);
     }
   }
   return arr;
 }
 
-function treePositions() {
+function broadleafPositions() {
   const arr: [number, number, number, number][] = [];
-  // Outer perimeter ring
-  for (let i = 0; i < 90; i++) {
-    const a = (i / 90) * Math.PI * 2;
+  // Dense outer perimeter ring — inside the fog radius
+  for (let i = 0; i < 78; i++) {
+    const a = (i / 78) * Math.PI * 2;
     const seed = (i * 91) % 100;
     const jitter = (seed / 100) * 0.9;
-    const r = 14.2 + jitter;
-    const rz = 12.1 + jitter * 0.8;
-    arr.push([
-      Math.cos(a) * r,
-      0,
-      Math.sin(a) * rz,
-      (seed / 100) * Math.PI * 2,
-    ]);
+    const r = 14.3 + jitter;
+    const rz = 12.2 + jitter * 0.8;
+    arr.push([Math.cos(a) * r, 0, Math.sin(a) * rz, (seed / 100) * Math.PI * 2]);
   }
-  // Scattered inner clusters (grass islands)
+  // Grass-island clusters between the spine and the ring road
   const spots: [number, number][] = [
-    [-7.8, 3.8],
+    [-7.6, 4.0],
     [-7.2, -3.6],
-    [-5.5, 8.6],
     [7.6, 4.4],
-    [6.4, 7.3],
+    [6.4, 7.0],
     [7.2, -1.2],
-    [-3, 8.2],
-    [3, 8.2],
-    [0, -6.5],
   ];
   spots.forEach(([x, z], si) => {
     for (let k = 0; k < 3; k++) {
-      const ang = (k / 3) * Math.PI * 2 + si * 0.7;
-      const r = 0.55;
+      const ang = (k / 3) * Math.PI * 2 + si * 0.9;
+      const r = 0.6;
       arr.push([x + Math.cos(ang) * r, 0, z + Math.sin(ang) * r, ang]);
     }
   });
   return arr;
 }
 
-// Rendering ------------------------------------------------------
-
-function Palm({ pos, scale }: { pos: [number, number, number]; scale: number }) {
-  const { trunk, leaf } = usePalmPieces();
-  const trunkMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: COLORS.trunk, roughness: 0.95 }),
-    [],
-  );
-  const leafMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: COLORS.palmGreen, roughness: 0.75 }),
-    [],
-  );
-  return (
-    <group position={pos} scale={scale}>
-      <mesh castShadow position={[0, 0.45, 0]} geometry={trunk} material={trunkMat} />
-      {Array.from({ length: PALM_LEAF_COUNT }).map((_, i) => {
-        const a = (i / PALM_LEAF_COUNT) * Math.PI * 2;
-        return (
-          <mesh
-            key={i}
-            castShadow
-            position={[Math.cos(a) * 0.08, 0.95, Math.sin(a) * 0.08]}
-            rotation={[-0.35, a, 0]}
-            geometry={leaf}
-            material={leafMat}
-          />
-        );
-      })}
-    </group>
-  );
+function narrowPositions() {
+  const arr: [number, number, number, number][] = [];
+  // Second (inner) ring, offset for variety
+  for (let i = 0; i < 42; i++) {
+    const a = (i / 42) * Math.PI * 2 + 0.04;
+    const seed = (i * 51) % 100;
+    const jitter = (seed / 100) * 0.7;
+    const r = 15.4 + jitter;
+    const rz = 13.1 + jitter * 0.6;
+    arr.push([Math.cos(a) * r, 0, Math.sin(a) * rz, (seed / 100) * Math.PI * 2]);
+  }
+  return arr;
 }
 
-function Tree({ pos, scale }: { pos: [number, number, number]; scale: number }) {
-  const { trunk, canopy, canopy2 } = useTreePieces();
-  const trunkMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: COLORS.trunk, roughness: 0.95 }),
+function ornamentalPositions() {
+  const arr: [number, number, number, number][] = [];
+  // Pink blossom accents flanking the plaza south walkway
+  for (let i = 0; i < 4; i++) {
+    for (const side of [-1, 1]) {
+      arr.push([side * 2.4, 0, 5.5 + i * 0.7, 0]);
+    }
+  }
+  // Entrance path accents
+  for (let i = 0; i < 3; i++) {
+    for (const side of [-1, 1]) {
+      arr.push([side * 2.8, 0, 12.0 + i * 0.7, 0]);
+    }
+  }
+  return arr;
+}
+
+// ---------------- Instanced mesh rendering ----------------
+
+type Species = {
+  count: number;
+  positions: [number, number, number, number][];
+  geometry: THREE.BufferGeometry;
+  scaleBase: number;
+  scaleJitter: number;
+};
+
+function useSpecies(): Species[] {
+  return useMemo(() => {
+    const palm = palmPositions();
+    const broad = broadleafPositions();
+    const narrow = narrowPositions();
+    const orn = ornamentalPositions();
+    return [
+      {
+        count: palm.length,
+        positions: palm,
+        geometry: makePalmGeometry(),
+        scaleBase: 0.95,
+        scaleJitter: 0.25,
+      },
+      {
+        count: broad.length,
+        positions: broad,
+        geometry: makeBroadleafGeometry(),
+        scaleBase: 0.95,
+        scaleJitter: 0.45,
+      },
+      {
+        count: narrow.length,
+        positions: narrow,
+        geometry: makeNarrowGeometry(),
+        scaleBase: 0.9,
+        scaleJitter: 0.4,
+      },
+      {
+        count: orn.length,
+        positions: orn,
+        geometry: makeOrnamentalGeometry(),
+        scaleBase: 1.0,
+        scaleJitter: 0.2,
+      },
+    ];
+  }, []);
+}
+
+function SpeciesInstanced({ species }: { species: Species }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const mat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.85,
+      }),
     [],
   );
-  const leafMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: COLORS.leavesGreen, roughness: 0.85 }),
-    [],
-  );
+
+  useEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+    species.positions.forEach(([x, y, z, rot], i) => {
+      const jitter = ((i * 17) % 100) / 100;
+      const scale = species.scaleBase + jitter * species.scaleJitter;
+      q.setFromEuler(new THREE.Euler(0, rot, 0));
+      s.set(scale, scale, scale);
+      m.compose(new THREE.Vector3(x, y, z), q, s);
+      mesh.setMatrixAt(i, m);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+  }, [species]);
+
   return (
-    <group position={pos} scale={scale}>
-      <mesh castShadow position={[0, 0.325, 0]} geometry={trunk} material={trunkMat} />
-      <mesh castShadow position={[0, 0.85, 0]} geometry={canopy} material={leafMat} />
-      <mesh castShadow position={[0.18, 1.05, -0.1]} geometry={canopy2} material={leafMat} />
-    </group>
+    <instancedMesh
+      ref={ref}
+      args={[species.geometry, mat, species.count]}
+      castShadow
+      receiveShadow
+    />
   );
 }
 
 export default function Vegetation() {
-  const palms = useMemo(() => palmPositions(), []);
-  const trees = useMemo(() => treePositions(), []);
-
+  const species = useSpecies();
   return (
     <group>
-      {palms.map((p, i) => {
-        const s = 0.9 + (((i * 17) % 5) / 5) * 0.35;
-        return <Palm key={`p${i}`} pos={[p[0], p[1], p[2]]} scale={s} />;
-      })}
-      {trees.map((p, i) => {
-        const s = 0.9 + (((i * 23) % 7) / 7) * 0.55;
-        return <Tree key={`t${i}`} pos={[p[0], p[1], p[2]]} scale={s} />;
-      })}
+      {species.map((s, i) => (
+        <SpeciesInstanced key={i} species={s} />
+      ))}
     </group>
   );
 }
