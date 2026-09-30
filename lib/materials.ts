@@ -32,7 +32,10 @@ export const COLORS = {
   solar: "#243046",
   metalDark: "#7a7b80",
   ground: "#e7e4d8",         // pale terrain
-  groundOutside: "#e2ded1",  // surrounding urban tissue
+  groundOutside: "#f7f2f4",  // very pale pink-white — architectural model surround
+  outsideMistPink: "#f9e6ec",
+  outsideBlockWhite: "#f6f2f4",
+  outsidePathPink: "#f2c9d6",
 } as const;
 
 // ---------------- Shared material singletons ----------------

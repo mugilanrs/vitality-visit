@@ -71,7 +71,10 @@ export default function AgendaOverlay() {
       )}
 
       <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center md:bottom-24">
-        {focus.level === "building" && building && (
+        {/* EB3's building level is presented by the in-scene EB3Cutaway,
+            so no DOM card is needed there. Other buildings would fall
+            through to the DOM card. */}
+        {focus.level === "building" && building && building.id !== "eb3" && (
           <BuildingCard building={building} />
         )}
         {focus.level === "floor" && building && floor && (

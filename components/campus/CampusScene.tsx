@@ -9,6 +9,7 @@ import CampusArchitecture from "./CampusArchitecture";
 import CampusHotspots from "./CampusHotspots";
 import SpatialFocus from "./SpatialFocus";
 import SpatialTiles from "./SpatialTiles";
+import EB3Cutaway from "./EB3Cutaway";
 import { ActiveInterior } from "./RoomInterior";
 import { detectQuality, type QualitySettings } from "@/lib/quality";
 import { journey, subscribeJourney } from "@/lib/journey";
@@ -119,6 +120,7 @@ export default function CampusScene() {
             <SpatialFocus />
             <CampusHotspots />
             <SpatialTiles />
+            <EB3Cutaway />
           </group>
 
           {/* Interior stage — mounted only while focus.level === "inside" */}

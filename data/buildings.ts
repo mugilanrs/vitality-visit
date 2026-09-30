@@ -2,22 +2,14 @@ import type { CameraState } from "@/lib/camera";
 import type { BuildingId } from "@/lib/journey";
 
 /**
- * PHASE 8 — the six primary campus blocks.
+ * PHASE 9 — buildings + their destinations.
  *
- * The reference campus is bilateral: three blocks on the left of the
- * central spine, three on the right. This data file is the SINGLE source
- * of truth for their positions, camera frames, spatial tile anchors, and
- * agenda content. Nothing else in the app hardcodes a block position.
- *
- * Layout (world XZ):
- *
- *                    (tower / crown)
- *                          |
- *   [ Block A ]  |  spine  |  [ Block D ]         z ≈ -3.5   REAR
- *   [ Block B ]  |  spine  |  [ Block E ]         z ≈  0.0   MIDDLE
- *   [ Block C ]  |  spine  |  [ Block F / EB3 ]   z ≈ +3.5   FRONT
- *                          |
- *                     entrance lake
+ * Six primary blocks around the central spine (three left, three right).
+ * Two of them carry interactive markers on the main campus view:
+ *   - EB3            (right-front, next to the lake) — 3 levels: ODC, AM, PM
+ *   - Signature Tower (crown at the rear of the spine) — direct entry to
+ *                     the Executive Rich Dining Room
+ * The other four blocks are architecture only.
  */
 
 const OFFSET: readonly [number, number, number] = [9, 11, 11];
@@ -62,26 +54,25 @@ export type BuildingSpec = {
   accent: string;
   side: BuildingSide;
   row: BuildingRow;
-  /** Camera frame for the whole building. */
   camera: CameraState;
-  /** World-space anchor for the pink glass tile / hotspot marker. */
   markerPosition: readonly [number, number, number];
-  /** World-space position of the building base (used for the highlight ring). */
   basePosition: readonly [number, number, number];
   floors: BuildingFloor[];
+  /**
+   * When true the drill-down UI skips the floor-selection step and jumps
+   * straight to the single room. Used for Signature Tower → dining.
+   */
+  directEntry?: boolean;
 };
 
 // ---------------- Layout constants shared with CampusArchitecture ----------------
 
-/** Distance from spine centre to each row of blocks. */
 export const BLOCK_X = 3.85;
-/** Z position of each row (rear → front). */
 export const BLOCK_ROWS: Record<BuildingRow, number> = {
   rear: -3.5,
   middle: 0.0,
   front: 3.5,
 };
-/** Uniform block size — enforced by the composition, not per-building. */
 export const BLOCK_SIZE = {
   width: 3.6,
   depth: 1.9,
@@ -89,16 +80,18 @@ export const BLOCK_SIZE = {
   floorHeight: 0.38,
 };
 
-// Interior scenes live off-campus in world space so the shared camera can
-// travel to them without colliding with the campus geometry.
+const SPINE_LEN = 12.4;
+const TOWER_X = 0;
+const TOWER_Z = -SPINE_LEN / 2 - 0.2;
+const TOWER_HEIGHT = 9.0;
+
+// Interior scenes live off-campus so the shared camera can travel to them
+// without colliding with the campus geometry.
 export const INTERIOR_ORIGINS = {
-  "block-a::0::lounge": [80, 1.4, 0] as const,
-  "block-b::0::lounge": [80, 1.4, 12] as const,
-  "block-c::0::lounge": [80, 1.4, 24] as const,
-  "block-d::0::lounge": [80, 1.4, 36] as const,
-  "block-e::0::lounge": [80, 1.4, 48] as const,
-  "eb3::0::board-am": [100, 1.4, 0] as const,
-  "eb3::1::board-pm": [100, 1.4, 12] as const,
+  "eb3::0::odc": [80, 1.4, 0] as const,
+  "eb3::1::board-am": [80, 1.4, 14] as const,
+  "eb3::2::board-pm": [80, 1.4, 28] as const,
+  "signature-tower::0::executive-dining": [140, 1.4, 0] as const,
 } as const;
 
 function interiorFrame(origin: readonly [number, number, number]): CameraState {
@@ -110,19 +103,17 @@ function interiorFrame(origin: readonly [number, number, number]): CameraState {
   };
 }
 
-// ---------------- Helpers ----------------
-
-function makeBuilding(
+function makeBlock(
   id: BuildingId,
   name: string,
   subtitle: string,
   side: BuildingSide,
   row: BuildingRow,
   floors: BuildingFloor[],
+  cameraOverride?: CameraState,
 ): BuildingSpec {
   const x = (side === "left" ? -1 : 1) * BLOCK_X;
   const z = BLOCK_ROWS[row];
-  const baseY = 0;
   const buildingHeight = BLOCK_SIZE.floors * BLOCK_SIZE.floorHeight + 0.4;
   return {
     id,
@@ -131,168 +122,81 @@ function makeBuilding(
     accent: "#f4a3c1",
     side,
     row,
-    camera: fromTarget([x, 1.1, z], 2.0),
+    camera: cameraOverride ?? fromTarget([x, 1.1, z], 2.0),
     markerPosition: [x, buildingHeight + 0.15, z],
-    basePosition: [x, baseY, z],
+    basePosition: [x, 0, z],
     floors,
   };
 }
 
-// ---------------- The six blocks ----------------
+// ---------------- Non-interactive blocks (four of six) ----------------
 
-// Block A — LEFT REAR
-export const BUILDING_A: BuildingSpec = makeBuilding(
+export const BUILDING_A = makeBlock(
   "block-a",
   "Innovation Hub",
   "Discovery & Ideation",
   "left",
   "rear",
-  [
-    {
-      index: 0,
-      label: "Ground",
-      name: "Ideation Studio",
-      camera: fromTarget([-BLOCK_X, 0.5, BLOCK_ROWS.rear], 2.2),
-      rooms: [
-        {
-          id: "lounge",
-          name: "Ideation Studio",
-          session: "Product Discovery",
-          host: "Innovation Team",
-          time: "10:00 — 11:30",
-          capacity: "20 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["block-a::0::lounge"]),
-        },
-      ],
-    },
-  ],
+  [],
 );
-
-// Block B — LEFT MIDDLE
-export const BUILDING_B: BuildingSpec = makeBuilding(
+export const BUILDING_B = makeBlock(
   "block-b",
   "Engineering Studios",
   "Platform & Delivery",
   "left",
   "middle",
-  [
-    {
-      index: 0,
-      label: "Ground",
-      name: "Engineering Commons",
-      camera: fromTarget([-BLOCK_X, 0.5, BLOCK_ROWS.middle], 2.2),
-      rooms: [
-        {
-          id: "lounge",
-          name: "Engineering Commons",
-          session: "Engineering At Scale",
-          host: "Platform Team",
-          time: "11:45 — 13:00",
-          capacity: "24 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["block-b::0::lounge"]),
-        },
-      ],
-    },
-  ],
+  [],
 );
-
-// Block C — LEFT FRONT
-export const BUILDING_C: BuildingSpec = makeBuilding(
+export const BUILDING_C = makeBlock(
   "block-c",
   "Design Lab",
   "Product & Design",
   "left",
   "front",
-  [
-    {
-      index: 0,
-      label: "Ground",
-      name: "Design Studio",
-      camera: fromTarget([-BLOCK_X, 0.5, BLOCK_ROWS.front], 2.2),
-      rooms: [
-        {
-          id: "lounge",
-          name: "Design Studio",
-          session: "Design Review",
-          host: "Product Design",
-          time: "14:15 — 15:15",
-          capacity: "18 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["block-c::0::lounge"]),
-        },
-      ],
-    },
-  ],
+  [],
 );
-
-// Block D — RIGHT REAR
-export const BUILDING_D: BuildingSpec = makeBuilding(
+export const BUILDING_D = makeBlock(
   "block-d",
   "Research Wing",
   "Applied Research",
   "right",
   "rear",
-  [
-    {
-      index: 0,
-      label: "Ground",
-      name: "Research Lab",
-      camera: fromTarget([BLOCK_X, 0.5, BLOCK_ROWS.rear], 2.2),
-      rooms: [
-        {
-          id: "lounge",
-          name: "Research Lab",
-          session: "Applied Research",
-          host: "R&D",
-          time: "10:00 — 11:30",
-          capacity: "16 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["block-d::0::lounge"]),
-        },
-      ],
-    },
-  ],
+  [],
 );
-
-// Block E — RIGHT MIDDLE  — Executive Lounge (was Signature Tower content)
-export const BUILDING_E: BuildingSpec = makeBuilding(
+export const BUILDING_E = makeBlock(
   "block-e",
   "Executive Lounge",
-  "Executive Lunch",
+  "Team Hospitality",
   "right",
   "middle",
-  [
+  [],
+);
+
+// ---------------- EB3 — right FRONT, closest to the lake, 3 levels ----------------
+
+const EB3_FLOORS: BuildingFloor[] = [
     {
       index: 0,
-      label: "Ground",
-      name: "Executive Lounge",
-      camera: fromTarget([BLOCK_X, 0.5, BLOCK_ROWS.middle], 2.2),
+      label: "Level 1",
+      name: "ODC",
+      camera: fromTarget([BLOCK_X, 0.35, BLOCK_ROWS.front], 2.6),
       rooms: [
         {
-          id: "lounge",
-          name: "Executive Lounge",
-          session: "Executive Lunch",
-          host: "Office of the CEO",
-          time: "13:00 — 14:15",
-          capacity: "24 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["block-e::0::lounge"]),
+          id: "odc",
+          name: "ODC",
+          session: "Offshore Delivery Centre",
+          host: "Delivery Team",
+          time: "09:00 — 18:00",
+          capacity: "48 desks",
+          interior: interiorFrame(INTERIOR_ORIGINS["eb3::0::odc"]),
         },
       ],
     },
-  ],
-);
-
-// EB3 — RIGHT FRONT  — Board Rooms (kept from the previous phase)
-export const BUILDING_EB3: BuildingSpec = makeBuilding(
-  "eb3",
-  "EB3",
-  "Board Rooms",
-  "right",
-  "front",
-  [
     {
-      index: 0,
-      label: "Floor 1",
+      index: 1,
+      label: "Level 2",
       name: "Board Room AM",
-      camera: fromTarget([BLOCK_X, 0.35, BLOCK_ROWS.front], 2.4),
+      camera: fromTarget([BLOCK_X, 0.75, BLOCK_ROWS.front], 2.6),
       rooms: [
         {
           id: "board-am",
@@ -301,15 +205,15 @@ export const BUILDING_EB3: BuildingSpec = makeBuilding(
           host: "Executive Council",
           time: "09:30 — 12:30",
           capacity: "18 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["eb3::0::board-am"]),
+          interior: interiorFrame(INTERIOR_ORIGINS["eb3::1::board-am"]),
         },
       ],
     },
     {
-      index: 1,
-      label: "Floor 2",
+      index: 2,
+      label: "Level 3",
       name: "Board Room PM",
-      camera: fromTarget([BLOCK_X, 0.73, BLOCK_ROWS.front], 2.4),
+      camera: fromTarget([BLOCK_X, 1.15, BLOCK_ROWS.front], 2.6),
       rooms: [
         {
           id: "board-pm",
@@ -318,12 +222,57 @@ export const BUILDING_EB3: BuildingSpec = makeBuilding(
           host: "Executive Council",
           time: "14:00 — 17:30",
           capacity: "18 seats",
-          interior: interiorFrame(INTERIOR_ORIGINS["eb3::1::board-pm"]),
+          interior: interiorFrame(INTERIOR_ORIGINS["eb3::2::board-pm"]),
+        },
+      ],
+    },
+];
+
+export const BUILDING_EB3: BuildingSpec = makeBlock(
+  "eb3",
+  "EB3",
+  "Board Rooms & ODC",
+  "right",
+  "front",
+  EB3_FLOORS,
+  fromTarget([BLOCK_X, 1.75, BLOCK_ROWS.front], 1.6),
+);
+
+// ---------------- Signature Tower — direct entry to dining ----------------
+
+export const BUILDING_SIGNATURE_TOWER: BuildingSpec = {
+  id: "signature-tower",
+  name: "Signature Tower",
+  subtitle: "Executive Dining",
+  accent: "#f4a3c1",
+  side: "right",
+  row: "rear",
+  camera: fromTarget([TOWER_X, 4.5, TOWER_Z], 1.6),
+  markerPosition: [TOWER_X, TOWER_HEIGHT + 0.4, TOWER_Z],
+  basePosition: [TOWER_X, 0, TOWER_Z],
+  directEntry: true,
+  floors: [
+    {
+      index: 0,
+      label: "Crown",
+      name: "Executive Rich Dining Room",
+      camera: fromTarget([TOWER_X, TOWER_HEIGHT * 0.82, TOWER_Z], 2.0),
+      rooms: [
+        {
+          id: "executive-dining",
+          name: "Executive Rich Dining Room",
+          session: "Executive Lunch",
+          host: "Office of the CEO",
+          time: "13:00 — 14:15",
+          capacity: "24 seats",
+          interior: interiorFrame(
+            INTERIOR_ORIGINS["signature-tower::0::executive-dining"],
+          ),
         },
       ],
     },
   ],
-);
+};
 
 // ---------------- Registry ----------------
 
@@ -334,9 +283,10 @@ export const BUILDINGS: Record<BuildingId, BuildingSpec> = {
   "block-d": BUILDING_D,
   "block-e": BUILDING_E,
   eb3: BUILDING_EB3,
+  "signature-tower": BUILDING_SIGNATURE_TOWER,
 };
 
-/** Reading order used by the overlay tiles (left→right, rear→front). */
+/** Reading order for the scroll tour (six primary blocks only). */
 export const BUILDING_ORDER: BuildingId[] = [
   "block-a",
   "block-b",
@@ -345,6 +295,9 @@ export const BUILDING_ORDER: BuildingId[] = [
   "block-e",
   "eb3",
 ];
+
+/** Buildings that carry an interactive marker on the main campus view. */
+export const MARKER_BUILDINGS: BuildingId[] = ["eb3", "signature-tower"];
 
 export type InteriorKey = keyof typeof INTERIOR_ORIGINS;
 
