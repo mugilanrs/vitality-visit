@@ -45,7 +45,7 @@ export const CAMPUS_LOCATIONS: CampusLocation[] = [
   {
     id: "entrance",
     name: "Campus Entrance",
-    camera: from([0, 0.5, 2], 0.95),
+    camera: from([0, 2.0, 2], 0.78),
     agenda: {
       step: "01",
       title: "Arrival & Welcome",
