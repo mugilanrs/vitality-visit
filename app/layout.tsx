@@ -14,7 +14,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Vitality Campus — Interactive 2.5D Map",
-  description: "A cinematic 2.5D journey through the Vitality campus.",
+  description:
+    "A digital architectural exhibition of the Vitality campus — explore the site through a cinematic 2.5D journey.",
+};
+
+export const viewport = {
+  themeColor: "#eaf0f6",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

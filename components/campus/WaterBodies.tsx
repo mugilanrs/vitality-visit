@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { M_WATER } from "@/lib/materials";
 import { designedPondShape } from "@/lib/geometry";
+import { journey } from "@/lib/journey";
 
 /**
  * Campus water surfaces — refined so they read as intentionally designed
@@ -21,9 +22,13 @@ import { designedPondShape } from "@/lib/geometry";
  */
 function useWaterAnimation() {
   const ref = useRef({ t: 0 });
-  useFrame((state, dt) => {
+  useFrame((_state, dt) => {
+    if (journey.reducedMotion) return;
     ref.current.t += dt;
-    const wobble = 0.85 + 0.18 * Math.sin(ref.current.t * 0.4);
+    // Two combined sine waves — reads as slow drift rather than a pulse
+    const t = ref.current.t;
+    const wobble =
+      0.88 + 0.14 * Math.sin(t * 0.35) + 0.05 * Math.sin(t * 0.19 + 1.7);
     (M_WATER as THREE.MeshStandardMaterial).envMapIntensity = wobble;
   });
 }

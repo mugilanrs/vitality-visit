@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { COLORS } from "@/lib/materials";
+import { journey } from "@/lib/journey";
 
 /**
  * Instanced vegetation — real InstancedMesh per species, so ~300+ plants
@@ -248,6 +250,8 @@ type Species = {
   geometry: THREE.BufferGeometry;
   scaleBase: number;
   scaleJitter: number;
+  /** If true, apply a very subtle ambient sway on the group as a whole. */
+  sway?: boolean;
 };
 
 function useSpecies(): Species[] {
@@ -263,6 +267,7 @@ function useSpecies(): Species[] {
         geometry: makePalmGeometry(),
         scaleBase: 0.95,
         scaleJitter: 0.25,
+        sway: true,
       },
       {
         count: broad.length,
@@ -284,6 +289,7 @@ function useSpecies(): Species[] {
         geometry: makeOrnamentalGeometry(),
         scaleBase: 1.0,
         scaleJitter: 0.2,
+        sway: true,
       },
     ];
   }, []);
@@ -291,6 +297,7 @@ function useSpecies(): Species[] {
 
 function SpeciesInstanced({ species }: { species: Species }) {
   const ref = useRef<THREE.InstancedMesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const mat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -318,13 +325,25 @@ function SpeciesInstanced({ species }: { species: Species }) {
     mesh.frustumCulled = false;
   }, [species]);
 
+  // Ambient sway — applied at the group level so we don't rewrite matrices.
+  useFrame((state) => {
+    if (!species.sway || journey.reducedMotion) return;
+    const g = groupRef.current;
+    if (!g) return;
+    const t = state.clock.elapsedTime;
+    g.rotation.z = Math.sin(t * 0.35) * 0.004;
+    g.rotation.x = Math.cos(t * 0.27) * 0.003;
+  });
+
   return (
-    <instancedMesh
-      ref={ref}
-      args={[species.geometry, mat, species.count]}
-      castShadow
-      receiveShadow
-    />
+    <group ref={groupRef}>
+      <instancedMesh
+        ref={ref}
+        args={[species.geometry, mat, species.count]}
+        castShadow
+        receiveShadow
+      />
+    </group>
   );
 }
 

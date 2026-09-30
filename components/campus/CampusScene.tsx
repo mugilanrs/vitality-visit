@@ -2,55 +2,72 @@
 
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, SoftShadows } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import CampusCamera from "./CampusCamera";
 import CampusArchitecture from "./CampusArchitecture";
 import CampusHotspots from "./CampusHotspots";
+import SpatialFocus from "./SpatialFocus";
+import { detectQuality, type QualitySettings } from "@/lib/quality";
 
 /**
- * Premium architectural daylight.
+ * Premium architectural daylight (Phase 3 baseline, Phase 6 tuning).
  *
  * Lighting model:
  *   - Hemisphere: cool sky (#dfe9f3) + warm ground (#e6e1d3) — hero ambient
  *   - Directional key: high, warm sun tint, casts soft PCF-Soft shadows
  *   - Directional fill: opposite side, cool tint, no shadow
  *   - Ambient: barely-there floor tint, keeps under-canopies from going pitch
- *   - SoftShadows: PCF soft-shadow monkeypatch — reads as premium arch-viz
+ *   - SoftShadows: PCF soft-shadow monkeypatch (disabled on LOW tier)
  *   - ContactShadows: rounds off the shadow directly under each building
  *
  * Renderer:
- *   - dpr capped at 2 (perf on retina)
+ *   - dpr scales per quality tier
  *   - ACES tonemap, exposure 1.05
  *   - Fog (not FogExp2) for a whisper of horizon fade
  */
 export default function CampusScene() {
+  const [quality, setQuality] = useState<QualitySettings>(() => detectQuality());
+
+  useEffect(() => {
+    const on = () => setQuality(detectQuality());
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+
+  const useSoftShadows = quality.softShadows;
+  const shadowMap = quality.shadowMap;
+
+  const styleBg = useMemo(
+    () => ({
+      background:
+        "linear-gradient(180deg, #edf2f8 0%, #e4ebf1 55%, #dbe2e8 100%)",
+    }),
+    [],
+  );
+
   return (
     <div className="absolute inset-0">
       <Canvas
-        dpr={[1, 2]}
+        dpr={quality.dpr}
         shadows
         gl={{
-          antialias: true,
+          antialias: quality.tier !== "low",
           alpha: false,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
-        style={{
-          background:
-            "linear-gradient(180deg, #edf2f8 0%, #e4ebf1 55%, #dbe2e8 100%)",
-        }}
+        style={styleBg}
         onCreated={({ scene }) => {
           scene.fog = new THREE.Fog(0xeaf0f6, 36, 68);
         }}
       >
-        {/* Premium soft shadows (drei monkeypatches the shadow shader once) */}
-        <SoftShadows size={22} samples={12} focus={0.9} />
+        {useSoftShadows && (
+          <SoftShadows size={22} samples={12} focus={0.9} />
+        )}
 
-        {/* Base ambient — very subtle, only to keep under-canopy shadows readable */}
+        {/* Base ambient */}
         <ambientLight intensity={0.32} color={"#f2ecdd"} />
-
-        {/* Hemisphere — the workhorse for architectural daylight */}
         <hemisphereLight args={[0xdfe9f3, 0xe6e1d3, 0.78]} />
 
         {/* Sun */}
@@ -59,8 +76,8 @@ export default function CampusScene() {
           intensity={1.45}
           color={"#fff2cf"}
           castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          shadow-mapSize-width={shadowMap}
+          shadow-mapSize-height={shadowMap}
           shadow-camera-left={-22}
           shadow-camera-right={22}
           shadow-camera-top={22}
@@ -70,8 +87,6 @@ export default function CampusScene() {
           shadow-bias={-0.0005}
           shadow-normalBias={0.02}
         />
-
-        {/* Cool fill from the opposite side */}
         <directionalLight
           position={[-10, 9, -6]}
           intensity={0.32}
@@ -83,18 +98,17 @@ export default function CampusScene() {
         <Suspense fallback={null}>
           <CampusArchitecture />
 
-          {/* Contact shadows — soft round shadow blob under the whole model */}
           <ContactShadows
             position={[0, 0.02, 0]}
             opacity={0.4}
             scale={40}
             blur={2.4}
             far={5}
-            resolution={1024}
+            resolution={quality.contactShadowsRes}
             color={"#1c2833"}
           />
 
-          {/* World-space hotspots for hover/click */}
+          <SpatialFocus />
           <CampusHotspots />
         </Suspense>
       </Canvas>
