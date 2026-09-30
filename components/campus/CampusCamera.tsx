@@ -9,7 +9,7 @@ import type { OrthographicCamera as ThreeOrthographicCamera } from "three";
 import { CAMPUS_LOCATIONS, N_STOPS } from "@/data/campusLocations";
 import { BUILDINGS } from "@/data/buildings";
 import { journey } from "@/lib/journey";
-import { clampZoom, orthoBoundsForZoom } from "@/lib/cameraConfig";
+import { clampZoom, orthoBoundsForViewport } from "@/lib/cameraConfig";
 import type { CameraState } from "@/lib/camera";
 
 /**
@@ -46,7 +46,6 @@ function easeOutExpo(t: number) {
   return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
-const BASE_FRAME_WIDTH = 34;
 const IDLE_MS = 3500;
 const OPEN_MS = 1700;
 const OPEN_ZOOM_START = 0.62;
@@ -84,7 +83,7 @@ export default function CampusCamera() {
     const cam = camRef.current;
     if (!cam) return;
     const aspect = size.width / size.height;
-    const b = orthoBoundsForZoom(BASE_FRAME_WIDTH, aspect);
+    const b = orthoBoundsForViewport(aspect);
     cam.left = b.left;
     cam.right = b.right;
     cam.top = b.top;

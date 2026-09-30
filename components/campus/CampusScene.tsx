@@ -67,8 +67,12 @@ export default function CampusScene() {
           toneMappingExposure: 1.05,
         }}
         style={styleBg}
-        onCreated={({ scene }) => {
+        onCreated={({ scene, gl }) => {
           scene.fog = new THREE.Fog(0xeaf0f6, 36, 68);
+          // Match the WebGL clear color to the sky/fog tint. Without this the
+          // renderer defaults to black, which showed up as a large letterbox
+          // above/below the campus on portrait viewports.
+          gl.setClearColor(new THREE.Color(0xeaf0f6), 1);
         }}
       >
         {useSoftShadows && (

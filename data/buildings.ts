@@ -95,11 +95,15 @@ export const INTERIOR_ORIGINS = {
 } as const;
 
 function interiorFrame(origin: readonly [number, number, number]): CameraState {
+  // Preserve the original 3-quarter view direction that composes the room
+  // through the transparent glass front wall; only widen the zoom so the
+  // full 8-wide room fits on portrait phones (aspect ≈ 0.46 → responsive
+  // frame ≈ 22 world units → 22 / 2.7 ≈ 8.1 world units of horizontal fit).
   return {
     position: [origin[0] + 4.5, origin[1] + 4.2, origin[2] + 4.8],
     rotation: [0, 0, 0],
     target: [origin[0], origin[1], origin[2]],
-    zoom: 4.8,
+    zoom: 2.7,
   };
 }
 

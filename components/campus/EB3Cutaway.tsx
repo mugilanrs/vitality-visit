@@ -183,77 +183,83 @@ function Level({
         </mesh>
       ))}
 
-      {/* Floating destination tag — glass pill anchored to this level */}
-      <Html
-        position={[W / 2 + 0.6, H / 2, 0]}
-        center
-        occlude={false}
-        style={{
-          pointerEvents: active ? "auto" : "none",
-          userSelect: "none",
-        }}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            openFloor(floor.index);
-          }}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          className="group relative flex flex-col items-start rounded-xl border px-3 py-2 focus:outline-none"
+      {/* Floating destination tag — glass pill anchored to this level.
+          MUST be conditionally mounted: drei's <Html> renders its DOM into a
+          portal that ignores the parent group's `visible` prop, so leaving it
+          mounted while EB3 is not the focus leaked the "LEVEL 3 BOARD ROOM PM"
+          card over the main campus view. */}
+      {active && (
+        <Html
+          position={[W / 2 + 0.6, H / 2, 0]}
+          center
+          occlude={false}
           style={{
-            width: 168,
-            background:
-              "linear-gradient(140deg, rgba(255,255,255,0.55) 0%, rgba(255,232,240,0.4) 100%)",
-            borderColor: hover
-              ? "rgba(255,182,203,0.9)"
-              : "rgba(255,255,255,0.6)",
-            backdropFilter: "blur(14px) saturate(160%)",
-            WebkitBackdropFilter: "blur(14px) saturate(160%)",
-            boxShadow: hover
-              ? "0 14px 30px -14px rgba(244,163,193,0.65), 0 0 20px rgba(255,182,203,0.4), inset 0 1px 0 rgba(255,255,255,0.7)"
-              : "0 10px 24px -14px rgba(244,163,193,0.45), inset 0 1px 0 rgba(255,255,255,0.55)",
-            transform: hover ? "translateY(-2px)" : "translateY(0)",
-            transition:
-              "transform 260ms cubic-bezier(0.4,0,0.2,1), background 200ms, box-shadow 200ms, border-color 200ms",
+            pointerEvents: "auto",
+            userSelect: "none",
           }}
         >
-          <span className="text-[8.5px] font-medium uppercase tracking-[0.34em] text-slate-700/85">
-            {floor.label}
-          </span>
-          <span className="mt-0.5 text-[13px] font-light uppercase tracking-[0.14em] text-slate-900">
-            {room?.name ?? floor.name}
-          </span>
-          <span className="mt-1 text-[9px] uppercase tracking-[0.26em] text-slate-700/80">
-            {room?.time ?? ""}
-          </span>
-          <span
-            className="mt-1.5 flex w-full items-center justify-between text-[9px] uppercase tracking-[0.28em] text-slate-700"
-          >
-            <span>{room?.host ?? ""}</span>
-            <span
-              className="transition-transform duration-300"
-              style={{ transform: hover ? "translateX(3px)" : "translateX(0)" }}
-            >
-              →
-            </span>
-          </span>
-
-          {/* Anchor tick pointing back at the level */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 -left-3 h-[1.5px] w-3"
-            style={{
-              background:
-                "linear-gradient(90deg, rgba(255,182,203,0), rgba(255,182,203,0.9))",
-              transform: "translateY(-50%)",
-              opacity: hover ? 1 : 0.6,
-              transition: "opacity 220ms",
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openFloor(floor.index);
             }}
-          />
-        </button>
-      </Html>
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            className="group relative flex flex-col items-start rounded-xl border px-3 py-2 focus:outline-none"
+            style={{
+              width: 148,
+              background:
+                "linear-gradient(140deg, rgba(255,255,255,0.55) 0%, rgba(255,232,240,0.4) 100%)",
+              borderColor: hover
+                ? "rgba(255,182,203,0.9)"
+                : "rgba(255,255,255,0.6)",
+              backdropFilter: "blur(14px) saturate(160%)",
+              WebkitBackdropFilter: "blur(14px) saturate(160%)",
+              boxShadow: hover
+                ? "0 14px 30px -14px rgba(244,163,193,0.65), 0 0 20px rgba(255,182,203,0.4), inset 0 1px 0 rgba(255,255,255,0.7)"
+                : "0 10px 24px -14px rgba(244,163,193,0.45), inset 0 1px 0 rgba(255,255,255,0.55)",
+              transform: hover ? "translateY(-2px)" : "translateY(0)",
+              transition:
+                "transform 260ms cubic-bezier(0.4,0,0.2,1), background 200ms, box-shadow 200ms, border-color 200ms",
+            }}
+          >
+            <span className="text-[8.5px] font-medium uppercase tracking-[0.34em] text-slate-700/85">
+              {floor.label}
+            </span>
+            <span className="mt-0.5 text-[12px] font-light uppercase tracking-[0.14em] text-slate-900">
+              {room?.name ?? floor.name}
+            </span>
+            <span className="mt-1 text-[9px] uppercase tracking-[0.26em] text-slate-700/80">
+              {room?.time ?? ""}
+            </span>
+            <span
+              className="mt-1.5 flex w-full items-center justify-between text-[9px] uppercase tracking-[0.28em] text-slate-700"
+            >
+              <span className="truncate">{room?.host ?? ""}</span>
+              <span
+                className="ml-2 transition-transform duration-300"
+                style={{ transform: hover ? "translateX(3px)" : "translateX(0)" }}
+              >
+                →
+              </span>
+            </span>
+
+            {/* Anchor tick pointing back at the level */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 -left-3 h-[1.5px] w-3"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(255,182,203,0), rgba(255,182,203,0.9))",
+                transform: "translateY(-50%)",
+                opacity: hover ? 1 : 0.6,
+                transition: "opacity 220ms",
+              }}
+            />
+          </button>
+        </Html>
+      )}
     </group>
   );
 }

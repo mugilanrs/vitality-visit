@@ -62,15 +62,38 @@ export default function AgendaOverlay() {
 
   // Campus level: the six spatial tiles handle discovery. AgendaOverlay only
   // renders the drill-down cards + the top breadcrumb (when past campus).
+  //
+  // PHASE 10 (mobile correction):
+  //   - Nothing renders at the campus level so the architecture is unshaded
+  //     by any DOM overlay.
+  //   - The bottom-anchored cards respect env(safe-area-inset-bottom) so an
+  //     iOS home indicator can't crop the CTA.
+  //   - The top breadcrumb respects env(safe-area-inset-top).
+  //   - The Signature Tower's room step skips the intermediate card entirely
+  //     — direct-entry buildings go straight to the InsideBar.
+  if (focus.level === "campus") return null;
+
+  const insideSignatureRoom =
+    focus.level === "room" &&
+    building?.directEntry === true;
+
   return (
     <div className="pointer-events-none fixed inset-0 z-30">
-      {focus.level !== "campus" && (
-        <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center md:top-10">
-          <BreadCrumb focusLevel={focus.level} building={building} floor={floor} />
-        </div>
-      )}
+      <div
+        className="pointer-events-none absolute inset-x-0 flex justify-center"
+        style={{
+          top: "calc(max(1.5rem, env(safe-area-inset-top)) + 0.5rem)",
+        }}
+      >
+        <BreadCrumb focusLevel={focus.level} building={building} floor={floor} />
+      </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center md:bottom-24">
+      <div
+        className="pointer-events-none absolute inset-x-0 flex justify-center px-4"
+        style={{
+          bottom: "calc(max(1.5rem, env(safe-area-inset-bottom)) + 0.75rem)",
+        }}
+      >
         {/* EB3's building level is presented by the in-scene EB3Cutaway,
             so no DOM card is needed there. Other buildings would fall
             through to the DOM card. */}
@@ -80,7 +103,7 @@ export default function AgendaOverlay() {
         {focus.level === "floor" && building && floor && (
           <FloorCard building={building} floor={floor} />
         )}
-        {focus.level === "room" && building && floor && room && (
+        {focus.level === "room" && building && floor && room && !insideSignatureRoom && (
           <RoomCard buildingName={building.name} floorLabel={floor.label} room={room} />
         )}
         {focus.level === "inside" && building && floor && room && (

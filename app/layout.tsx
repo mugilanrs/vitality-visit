@@ -22,6 +22,10 @@ export const viewport = {
   themeColor: "#eaf0f6",
   width: "device-width",
   initialScale: 1,
+  // Ensure iOS Safari lets us paint under the notch/home-bar so the campus
+  // occupies the full display; env(safe-area-inset-*) is then honoured by
+  // the UI (header, agenda cards) to keep controls clear of hardware chrome.
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

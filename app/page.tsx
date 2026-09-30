@@ -27,7 +27,19 @@ export default function Home() {
 
   return (
     <>
-      <div className="fixed inset-0 z-0">
+      {/* The canvas fills the DYNAMIC viewport (100dvh) rather than 100vh so
+          iOS Safari's collapsing URL bar can't reintroduce a letterbox on the
+          bottom. Width uses 100vw + safe-area insets so home-bar padding on
+          landscape iPhones doesn't crop the campus. */}
+      <div
+        className="fixed left-0 top-0 z-0"
+        style={{
+          width: "100vw",
+          height: "100dvh",
+          // 100dvh is unsupported on old Safari — fall back cleanly.
+          minHeight: "100vh",
+        }}
+      >
         <WebGLBoundary>
           <CampusScene />
         </WebGLBoundary>
@@ -35,13 +47,19 @@ export default function Home() {
 
       <CampusJourney ref={journeyRef} onActive={() => {}} />
 
-      <div className="pointer-events-none fixed inset-0 z-20">
+      <div
+        className="pointer-events-none fixed left-0 top-0 z-20"
+        style={{ width: "100vw", height: "100dvh" }}
+      >
         <BrandMark />
       </div>
 
       <AgendaOverlay />
 
-      <div className="pointer-events-none fixed inset-0 z-40">
+      <div
+        className="pointer-events-none fixed left-0 top-0 z-40"
+        style={{ width: "100vw", height: "100dvh" }}
+      >
         <DebugOverlay />
       </div>
 

@@ -24,6 +24,26 @@ body {
   overscroll-behavior: none;
 }
 
+/* Mobile viewport correction:
+ *   - Prevent horizontal scroll on portrait devices; the R3F canvas fills
+ *     the viewport, and any spillover from Html markers is clipped rather
+ *     than allowed to widen the page.
+ *   - Expose safe-area inset custom properties so ad-hoc styles can read
+ *     them without needing to know the raw env() syntax.
+ */
+html,
+body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
 /* Reduced motion: kill CSS transitions/animations too. */
 @media (prefers-reduced-motion: reduce) {
   *,
