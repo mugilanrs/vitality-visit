@@ -28,7 +28,8 @@ export type NavigationMode =
 
 // ---------------- Focus stack ----------------
 
-export type BuildingId = "eb3" | "signature-tower";
+/** String slug: one of the ids registered in data/buildings.ts. */
+export type BuildingId = string;
 
 export type FocusLevel = "campus" | "building" | "floor" | "room" | "inside";
 

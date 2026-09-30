@@ -4,7 +4,6 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { M_WATER } from "@/lib/materials";
-import { designedPondShape } from "@/lib/geometry";
 import { journey } from "@/lib/journey";
 
 /**
@@ -85,15 +84,9 @@ export default function WaterBodies() {
     return s;
   }, []);
 
-  // Residential lake — designed kidney bean
-  const residentialLake = useMemo(
-    () => designedPondShape(2.7, 2.0, 0.18),
-    [],
-  );
-
   return (
     <group>
-      {/* Plaza water */}
+      {/* Entrance lake — the plaza ring, south of the spine */}
       <group position={[0, 0.02, 6.5]}>
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
@@ -101,17 +94,6 @@ export default function WaterBodies() {
           receiveShadow
         >
           <shapeGeometry args={[plazaWater]} />
-        </mesh>
-      </group>
-
-      {/* Residential lake */}
-      <group position={[10, 0.02, -4]}>
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          material={M_WATER}
-          receiveShadow
-        >
-          <shapeGeometry args={[residentialLake]} />
         </mesh>
       </group>
     </group>

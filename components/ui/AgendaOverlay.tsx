@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  BUILDING_ORDER,
   BUILDINGS,
   type BuildingSpec,
 } from "@/data/buildings";
 import {
   journey,
   subscribeJourney,
-  openBuilding,
   openFloor,
   openRoom,
   enterRoom,
@@ -62,16 +60,17 @@ export default function AgendaOverlay() {
       ? floor.rooms.find((r) => r.id === focus.roomId)
       : null;
 
+  // Campus level: the six spatial tiles handle discovery. AgendaOverlay only
+  // renders the drill-down cards + the top breadcrumb (when past campus).
   return (
     <div className="pointer-events-none fixed inset-0 z-30">
-      {/* Top-center: the "AGENDA" label + breadcrumb */}
-      <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center md:top-10">
-        <BreadCrumb focusLevel={focus.level} building={building} floor={floor} />
-      </div>
+      {focus.level !== "campus" && (
+        <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center md:top-10">
+          <BreadCrumb focusLevel={focus.level} building={building} floor={floor} />
+        </div>
+      )}
 
-      {/* Center-bottom (or top, on campus): the active card */}
       <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-center md:bottom-24">
-        {focus.level === "campus" && <CampusTiles />}
         {focus.level === "building" && building && (
           <BuildingCard building={building} />
         )}
@@ -94,54 +93,6 @@ export default function AgendaOverlay() {
 }
 
 // ---------------- Cards ----------------
-
-function CampusTiles() {
-  return (
-    <div className="pointer-events-auto flex flex-col items-center gap-5 md:flex-row md:gap-8">
-      {BUILDING_ORDER.map((id) => {
-        const b = BUILDINGS[id];
-        return <BuildingTile key={id} building={b} onOpen={() => openBuilding(b.id)} />;
-      })}
-    </div>
-  );
-}
-
-function BuildingTile({
-  building,
-  onOpen,
-}: {
-  building: BuildingSpec;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="group relative flex w-72 flex-col overflow-hidden rounded-3xl border border-white/40 p-6 text-left backdrop-blur-2xl transition-all hover:-translate-y-1 focus:outline-none"
-      style={{
-        background:
-          "linear-gradient(140deg, rgba(255,214,230,0.35) 0%, rgba(244,163,193,0.22) 45%, rgba(255,255,255,0.18) 100%)",
-        boxShadow:
-          "0 20px 60px -18px rgba(244,163,193,0.55), inset 0 1px 0 rgba(255,255,255,0.55)",
-      }}
-    >
-      <div className="text-[10px] uppercase tracking-[0.36em] text-slate-700/80">
-        Agenda
-      </div>
-      <div className="mt-2 text-3xl font-light uppercase tracking-[0.14em] text-slate-900">
-        {building.name}
-      </div>
-      <div className="mt-1 text-[11px] uppercase tracking-[0.3em] text-slate-700/85">
-        {building.subtitle}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between text-[10px] uppercase tracking-[0.28em] text-slate-700/85">
-        <span>{building.floors.length === 1 ? "1 space" : `${building.floors.length} floors`}</span>
-        <span className="transition-transform group-hover:translate-x-1">→</span>
-      </div>
-    </button>
-  );
-}
 
 function BuildingCard({ building }: { building: BuildingSpec }) {
   return (

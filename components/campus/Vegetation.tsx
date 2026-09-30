@@ -159,21 +159,14 @@ function makeOrnamentalGeometry(): THREE.BufferGeometry {
 
 function palmPositions() {
   const arr: [number, number, number, number][] = [];
-  // Ring around the plaza water (outside)
+  // Ring around the entrance lake (outside)
   for (let i = 0; i < 22; i++) {
     const a = (i / 22) * Math.PI * 2;
     const rx = 4.6;
     const rz = 3.9;
     arr.push([Math.cos(a) * rx, 0, 6.5 + Math.sin(a) * rz, a]);
   }
-  // Ring around the residential lake
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2;
-    const rx = 3.3;
-    const rz = 2.5;
-    arr.push([10 + Math.cos(a) * rx, 0, -4 + Math.sin(a) * rz, a]);
-  }
-  // Twin rows along the entrance boulevard framing the auditorium
+  // Twin rows along the entrance boulevard leading to the plaza
   for (let i = 0; i < 5; i++) {
     for (const side of [-1, 1]) {
       arr.push([side * 1.75, 0, 9.4 + i * 0.7, 0]);

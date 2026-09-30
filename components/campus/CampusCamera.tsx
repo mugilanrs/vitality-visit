@@ -46,7 +46,7 @@ function easeOutExpo(t: number) {
   return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
-const BASE_FRAME_WIDTH = 30;
+const BASE_FRAME_WIDTH = 34;
 const IDLE_MS = 3500;
 const OPEN_MS = 1700;
 const OPEN_ZOOM_START = 0.62;
