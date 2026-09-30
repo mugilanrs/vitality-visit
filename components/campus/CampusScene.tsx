@@ -8,31 +8,38 @@ import CampusCamera from "./CampusCamera";
 import CampusArchitecture from "./CampusArchitecture";
 import CampusHotspots from "./CampusHotspots";
 import SpatialFocus from "./SpatialFocus";
+import { ActiveInterior } from "./RoomInterior";
 import { detectQuality, type QualitySettings } from "@/lib/quality";
+import { journey, subscribeJourney } from "@/lib/journey";
 
 /**
- * Premium architectural daylight (Phase 3 baseline, Phase 6 tuning).
+ * Premium architectural daylight (Phase 3 baseline; Phase 6 tuning; Phase 7
+ * adds interior room rendering).
  *
- * Lighting model:
- *   - Hemisphere: cool sky (#dfe9f3) + warm ground (#e6e1d3) — hero ambient
- *   - Directional key: high, warm sun tint, casts soft PCF-Soft shadows
- *   - Directional fill: opposite side, cool tint, no shadow
- *   - Ambient: barely-there floor tint, keeps under-canopies from going pitch
- *   - SoftShadows: PCF soft-shadow monkeypatch (disabled on LOW tier)
- *   - ContactShadows: rounds off the shadow directly under each building
+ * The scene renders one of two "stages":
+ *   - Campus stage: architecture + hotspots + spatial focus
+ *   - Interior stage: a mini board-room scene at an off-campus origin
  *
- * Renderer:
- *   - dpr scales per quality tier
- *   - ACES tonemap, exposure 1.05
- *   - Fog (not FogExp2) for a whisper of horizon fade
+ * The stage is chosen by `journey.focus.level`. The campus stage is always
+ * rendered so re-entry is instant; the interior is mounted only while
+ * `level === "inside"`.
  */
 export default function CampusScene() {
   const [quality, setQuality] = useState<QualitySettings>(() => detectQuality());
+  const [inside, setInside] = useState(journey.focus.level === "inside");
 
   useEffect(() => {
     const on = () => setQuality(detectQuality());
     window.addEventListener("resize", on);
     return () => window.removeEventListener("resize", on);
+  }, []);
+
+  // React to focus stack change to toggle interior mount.
+  useEffect(() => {
+    return subscribeJourney(
+      () => setInside(journey.focus.level === "inside"),
+      "focus",
+    );
   }, []);
 
   const useSoftShadows = quality.softShadows;
@@ -66,11 +73,9 @@ export default function CampusScene() {
           <SoftShadows size={22} samples={12} focus={0.9} />
         )}
 
-        {/* Base ambient */}
         <ambientLight intensity={0.32} color={"#f2ecdd"} />
         <hemisphereLight args={[0xdfe9f3, 0xe6e1d3, 0.78]} />
 
-        {/* Sun */}
         <directionalLight
           position={[14, 22, 8]}
           intensity={1.45}
@@ -96,20 +101,26 @@ export default function CampusScene() {
         <CampusCamera />
 
         <Suspense fallback={null}>
-          <CampusArchitecture />
+          {/* Campus stage — hidden while the user is inside a room */}
+          <group visible={!inside}>
+            <CampusArchitecture />
 
-          <ContactShadows
-            position={[0, 0.02, 0]}
-            opacity={0.4}
-            scale={40}
-            blur={2.4}
-            far={5}
-            resolution={quality.contactShadowsRes}
-            color={"#1c2833"}
-          />
+            <ContactShadows
+              position={[0, 0.02, 0]}
+              opacity={0.4}
+              scale={40}
+              blur={2.4}
+              far={5}
+              resolution={quality.contactShadowsRes}
+              color={"#1c2833"}
+            />
 
-          <SpatialFocus />
-          <CampusHotspots />
+            <SpatialFocus />
+            <CampusHotspots />
+          </group>
+
+          {/* Interior stage — mounted only while focus.level === "inside" */}
+          <ActiveInterior />
         </Suspense>
       </Canvas>
     </div>

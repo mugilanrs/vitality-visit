@@ -1,45 +1,63 @@
 /**
- * PHASE 5 — the single source of truth for the journey.
+ * PHASE 5–7 — the single source of truth for the journey.
  *
- * Every input — scroll, click, hotspot tap, keyboard, touch — writes into
- * this controller. The camera, hotspots, UI, and effects all *read* from it.
- * There is no other camera/click/hotspot state competing with it.
+ * The controller now has TWO axes:
  *
- * Held in a plain mutable object so scroll + camera + hotspots can read/write
- * at 60fps without React re-renders. React components subscribe to a tiny
- * event emitter for the events they care about (active/hover/mode).
+ *   1. `progress` — scroll-driven position along the campus overview journey
+ *      (kept intact from Phase 5, so the camera and hotspots keep working).
+ *
+ *   2. `focus`   — a drill-down stack that the new agenda UI drives:
+ *
+ *        campus  →  building  →  floor  →  room  →  inside
+ *
+ *      Each level takes over what the camera is looking at, and the pink-
+ *      glass agenda tiles read from this stack to decide which card to show.
+ *
+ * Held in a plain mutable object so scroll + camera + hotspots + UI can
+ * read/write at 60fps without React re-renders.
  */
 
 import { CAMPUS_LOCATIONS, N_STOPS } from "@/data/campusLocations";
 
 export type NavigationMode =
-  | "idle"      // no interaction for a while — allow subtle breathing
-  | "scroll"    // user is actively scrolling
-  | "click"     // camera flying to a click target
-  | "keyboard"  // arrow-key nav
-  | "touch";    // swipe
+  | "idle"
+  | "scroll"
+  | "click"
+  | "keyboard"
+  | "touch";
+
+// ---------------- Focus stack ----------------
+
+export type BuildingId = "eb3" | "signature-tower";
+
+export type FocusLevel = "campus" | "building" | "floor" | "room" | "inside";
+
+export type FocusState = {
+  level: FocusLevel;
+  building?: BuildingId;
+  /** Floor index (0 = ground). */
+  floor?: number;
+  /** Room identifier within the floor. */
+  roomId?: string;
+};
+
+// ---------------- Journey state ----------------
 
 export type JourneyState = {
-  /** Continuous progress in [0..N-1]; the camera reads this directly. */
   progress: number;
-  /** Nearest discrete stop (used for UI panel + active pill). */
   activeIndex: number;
-  /** Currently hovered hotspot, or null. */
   hoverIndex: number | null;
-  /** Locations the user has visited at least once (for VISITED marker state). */
   visited: Set<number>;
-  /** True when the user hasn't scrolled yet. */
   overview: boolean;
-  /** Which subsystem last drove the camera. */
   mode: NavigationMode;
-  /** True during a scripted GSAP-style transition; camera should smooth-redirect. */
   transitioning: boolean;
-  /** Cinematic opening — true while the initial reveal is in progress. */
   opening: boolean;
-  /** Timestamp of last user interaction (perf.now()). */
   lastInteraction: number;
-  /** Respect prefers-reduced-motion. */
   reducedMotion: boolean;
+  /** True while the welcome intro is on-screen. Suppresses camera parallax etc. */
+  welcome: boolean;
+  /** Focus stack — drives the pink-glass agenda + camera drill-down. */
+  focus: FocusState;
 };
 
 export const journey: JourneyState = {
@@ -54,6 +72,8 @@ export const journey: JourneyState = {
   lastInteraction:
     typeof performance !== "undefined" ? performance.now() : 0,
   reducedMotion: false,
+  welcome: true,
+  focus: { level: "campus" },
 };
 
 // ---------------- Event bus ----------------
@@ -64,7 +84,8 @@ type JourneyEvent =
   | "hover"
   | "mode"
   | "focus"
-  | "overview";
+  | "overview"
+  | "welcome";
 
 type Listener = () => void;
 const listeners = new Map<JourneyEvent, Set<Listener>>();
@@ -86,12 +107,11 @@ function emit(event: JourneyEvent) {
   if (event !== "change") listeners.get("change")?.forEach((fn) => fn());
 }
 
-// Back-compat named export (old code uses this).
 export function emitJourneyChange() {
   emit("change");
 }
 
-// ---------------- Mutators (call these instead of touching journey directly) ----------------
+// ---------------- Mutators ----------------
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -151,7 +171,61 @@ export function setReducedMotion(v: boolean) {
   journey.reducedMotion = v;
 }
 
-// ---------------- Derived helpers ----------------
+export function setWelcome(v: boolean) {
+  if (journey.welcome === v) return;
+  journey.welcome = v;
+  emit("welcome");
+}
+
+// ---------------- Focus stack mutators ----------------
+
+export function setFocus(next: FocusState) {
+  journey.focus = next;
+  markInteracted();
+  emit("focus");
+}
+
+export function openBuilding(id: BuildingId) {
+  setFocus({ level: "building", building: id });
+}
+
+export function openFloor(floor: number) {
+  const b = journey.focus.building;
+  if (!b) return;
+  setFocus({ level: "floor", building: b, floor });
+}
+
+export function openRoom(roomId: string) {
+  const f = journey.focus;
+  if (f.building == null || f.floor == null) return;
+  setFocus({ level: "room", building: f.building, floor: f.floor, roomId });
+}
+
+export function enterRoom() {
+  const f = journey.focus;
+  if (f.building == null || f.floor == null || f.roomId == null) return;
+  setFocus({ level: "inside", building: f.building, floor: f.floor, roomId: f.roomId });
+}
+
+export function focusBack() {
+  const f = journey.focus;
+  if (f.level === "inside") {
+    setFocus({ level: "room", building: f.building, floor: f.floor, roomId: f.roomId });
+    return;
+  }
+  if (f.level === "room") {
+    setFocus({ level: "floor", building: f.building, floor: f.floor });
+    return;
+  }
+  if (f.level === "floor") {
+    setFocus({ level: "building", building: f.building });
+    return;
+  }
+  if (f.level === "building") {
+    setFocus({ level: "campus" });
+    return;
+  }
+}
 
 export function currentLocation() {
   return CAMPUS_LOCATIONS[journey.activeIndex] ?? CAMPUS_LOCATIONS[0];
