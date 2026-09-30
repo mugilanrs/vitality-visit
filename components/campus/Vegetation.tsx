@@ -36,24 +36,24 @@ function useTreePieces() {
 
 function palmPositions() {
   const arr: [number, number, number, number][] = [];
-  // Ring around the plaza (centre 0, 6.5), just OUTSIDE the plaza lake
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2;
-    const rx = 4.3;
-    const rz = 3.7;
+  // Ring around the plaza (centre 0, 6.5), just OUTSIDE the plaza water
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2;
+    const rx = 4.5;
+    const rz = 3.8;
     arr.push([Math.cos(a) * rx, 0, 6.5 + Math.sin(a) * rz, a]);
   }
   // Ring around the residential lake
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
-    const rx = 3.2;
-    const rz = 2.4;
+    const rx = 3.3;
+    const rz = 2.5;
     arr.push([10 + Math.cos(a) * rx, 0, -4 + Math.sin(a) * rz, a]);
   }
-  // Rows along the entrance boulevard
-  for (let i = 0; i < 5; i++) {
+  // Rows along the entrance boulevard, framing the auditorium
+  for (let i = 0; i < 4; i++) {
     for (const side of [-1, 1]) {
-      arr.push([side * 1.6, 0, 8.6 + i * 0.7, 0]);
+      arr.push([side * 1.7, 0, 9.6 + i * 0.75, 0]);
     }
   }
   return arr;

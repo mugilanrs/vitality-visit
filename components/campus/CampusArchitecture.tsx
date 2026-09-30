@@ -12,25 +12,28 @@ import Vegetation from "./Vegetation";
 import {
   M_GROUND,
   M_GRASS,
-  M_ROOF_RIM,
-  M_WHITE_SHELL,
   M_METAL_DARK,
   COLORS,
 } from "@/lib/materials";
 
 /**
- * Compose the campus. Positions match the reference image's masterplan:
- *   Central Spine + Tower on the N–S axis, wings fanning east/west,
- *   Plaza + lake to the south of the spine, Auditorium at the front,
- *   Dome to the west of the plaza, Residential crescent NE around a lake.
+ * Compose the campus. Positions match the architectural reference:
+ *   Central Spine + Tower on the N–S axis
+ *   Wings fanning east/west from the spine
+ *   Plaza (with strong axis) + lake to the south of the spine
+ *   Auditorium further south, on the plaza axis
+ *   Dome to the west of the plaza
+ *   Residential crescent NE around a designed lake
  */
+
+const SPINE_LEN = 12.4; // must match CentralSpine.tsx
 
 function Terrain() {
   return (
     <group>
-      {/* Wide outer disc — surrounding urban tissue */}
+      {/* Surrounding urban tissue */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <circleGeometry args={[34, 96]} />
+        <circleGeometry args={[36, 96]} />
         <meshStandardMaterial color={COLORS.groundOutside} roughness={1} />
       </mesh>
 
@@ -41,51 +44,49 @@ function Terrain() {
         material={M_GROUND}
         receiveShadow
       >
-        <circleGeometry args={[16, 96]} />
+        <circleGeometry args={[16.5, 96]} />
       </mesh>
 
-      {/* Central grass ellipse around the spine */}
+      {/* Central grass ellipse around the spine — elongated to match the spine */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.005, 0]}
         material={M_GRASS}
         receiveShadow
       >
-        <circleGeometry args={[9.4, 96]} />
+        <circleGeometry args={[9.6, 96]} />
       </mesh>
 
-      {/* Faint darker grass boundary strip */}
+      {/* Faint darker grass boundary */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
-        <ringGeometry args={[9.35, 9.55, 96]} />
+        <ringGeometry args={[9.55, 9.75, 96]} />
         <meshStandardMaterial color={COLORS.grassDeep} roughness={1} />
       </mesh>
 
-      {/* Residential lawn under the crescent */}
+      {/* Residential lawn */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[10, 0.005, -4]}
         material={M_GRASS}
         receiveShadow
       >
-        <circleGeometry args={[4.4, 64]} />
+        <circleGeometry args={[4.6, 64]} />
       </mesh>
 
       {/* Auditorium lawn */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.005, 10]}
+        position={[0, 0.005, 11]}
         material={M_GRASS}
         receiveShadow
       >
-        <circleGeometry args={[3.5, 64]} />
+        <circleGeometry args={[3.8, 64]} />
       </mesh>
     </group>
   );
 }
 
-/**
- * Solar-panel canopy over a parking row (west + east corners of the site).
- */
+/** Solar-panel canopy over parking. */
 function ParkingCanopy({
   width = 3.4,
   depth = 1.6,
@@ -93,12 +94,10 @@ function ParkingCanopy({
 }: { width?: number; depth?: number; posts?: number }) {
   return (
     <group>
-      {/* Asphalt patch under the canopy */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.011, 0]}>
         <planeGeometry args={[width + 0.4, depth + 0.4]} />
         <meshStandardMaterial color={COLORS.roadDark} roughness={0.95} />
       </mesh>
-      {/* Small "cars" (box) rows */}
       {Array.from({ length: 10 }).map((_, i) => (
         <mesh
           key={i}
@@ -109,7 +108,6 @@ function ParkingCanopy({
           <meshStandardMaterial color="#c8ccd2" roughness={0.5} metalness={0.4} />
         </mesh>
       ))}
-      {/* Solar canopy: tilted panel on posts */}
       <mesh
         castShadow
         position={[0, 0.85, 0]}
@@ -118,7 +116,6 @@ function ParkingCanopy({
         <boxGeometry args={[width, 0.06, depth]} />
         <meshStandardMaterial color={COLORS.solar} roughness={0.35} metalness={0.6} />
       </mesh>
-      {/* Panel lattice — thin white lines over the dark panel */}
       {Array.from({ length: 5 }).map((_, i) => (
         <mesh
           key={i}
@@ -129,7 +126,6 @@ function ParkingCanopy({
           <meshStandardMaterial color={COLORS.roofWhite} />
         </mesh>
       ))}
-      {/* Supporting posts */}
       {Array.from({ length: posts }).map((_, i) => (
         <mesh
           key={i}
@@ -144,7 +140,6 @@ function ParkingCanopy({
   );
 }
 
-// Residential crescent — five curved buildings around the residential lake.
 function ResidentialCrescent() {
   const items = [
     { angle: -0.9 },
@@ -156,20 +151,21 @@ function ResidentialCrescent() {
   return (
     <group position={[10, 0, -4]}>
       {items.map((r, i) => {
-        const R = 3.6;
+        const R = 3.8;
         const x = Math.cos(r.angle + Math.PI / 2) * R;
         const z = -Math.sin(r.angle + Math.PI / 2) * R;
         const rotY = -r.angle;
         return (
           <group key={i} position={[x, 0, z]} rotation={[0, rotY, 0]}>
             <CampusBuilding
-              width={1.9}
-              depth={1.15}
+              width={2.2}
+              depth={1.25}
               floors={3}
               floorHeight={0.36}
               plan="curved"
-              canopyOverhang={0.18}
-              fins={5}
+              canopyOverhang={0.22}
+              fins={7}
+              variant={i % 2 === 0 ? "default" : "stacked"}
             />
           </group>
         );
@@ -178,7 +174,8 @@ function ResidentialCrescent() {
   );
 }
 
-// The eight main wing buildings — four west (Academic), four east (Innovation).
+// Eight wing buildings — four west (Academic), four east (Innovation), fanning
+// along the length of the spine, with variety in floor count and variant.
 function Wings() {
   const items: {
     side: -1 | 1;
@@ -186,24 +183,23 @@ function Wings() {
     width: number;
     depth: number;
     floors: number;
+    variant: "default" | "stacked";
   }[] = [
-    { side: -1, z: -2.8, width: 3.2, depth: 1.6, floors: 4 },
-    { side: -1, z: -0.9, width: 3.6, depth: 1.7, floors: 4 },
-    { side: -1, z: 1.1, width: 3.6, depth: 1.7, floors: 4 },
-    { side: -1, z: 3.1, width: 3.2, depth: 1.5, floors: 3 },
-    { side: 1, z: -2.8, width: 3.2, depth: 1.6, floors: 4 },
-    { side: 1, z: -0.9, width: 3.6, depth: 1.7, floors: 4 },
-    { side: 1, z: 1.1, width: 3.6, depth: 1.7, floors: 4 },
-    { side: 1, z: 3.1, width: 3.2, depth: 1.5, floors: 3 },
+    { side: -1, z: -4.4, width: 3.4, depth: 1.8, floors: 5, variant: "default" },
+    { side: -1, z: -1.7, width: 3.8, depth: 1.9, floors: 5, variant: "stacked" },
+    { side: -1, z: 1.0, width: 3.8, depth: 1.9, floors: 5, variant: "default" },
+    { side: -1, z: 3.6, width: 3.4, depth: 1.7, floors: 4, variant: "stacked" },
+    { side: 1, z: -4.4, width: 3.4, depth: 1.8, floors: 5, variant: "default" },
+    { side: 1, z: -1.7, width: 3.8, depth: 1.9, floors: 5, variant: "stacked" },
+    { side: 1, z: 1.0, width: 3.8, depth: 1.9, floors: 5, variant: "default" },
+    { side: 1, z: 3.6, width: 3.4, depth: 1.7, floors: 4, variant: "stacked" },
   ];
 
   return (
     <group>
       {items.map((it, i) => {
-        // Buildings sit with their "front" (curved facade) facing away from
-        // the spine — so we rotate east-side ones 180° so their fronts face +x.
         const rotY = it.side === -1 ? Math.PI : 0;
-        const x = it.side * (2.7 + it.depth / 2);
+        const x = it.side * (2.9 + it.depth / 2);
         return (
           <group key={i} position={[x, 0, it.z]} rotation={[0, rotY, 0]}>
             <CampusBuilding
@@ -211,8 +207,9 @@ function Wings() {
               depth={it.depth}
               floors={it.floors}
               plan="curved"
-              canopyOverhang={0.32}
-              fins={9}
+              canopyOverhang={0.45}
+              fins={10}
+              variant={it.variant}
             />
           </group>
         );
@@ -228,49 +225,46 @@ export default function CampusArchitecture() {
       <Roads />
       <WaterBodies />
 
-      {/* Central Spine + Tower (spine renders the tower itself) */}
       <CentralSpine />
-
-      {/* Wings */}
       <Wings />
 
-      {/* Bridges from each wing to the spine */}
+      {/* Bridges — narrow glass walkways from wings to spine. Positioned
+          slightly outside the spine so they don't collide with the atrium. */}
       <Bridges
         wings={[
-          { z: -2.8, xFrom: -2.7, xTo: -0.9 },
-          { z: -0.9, xFrom: -2.7, xTo: -0.9 },
-          { z: 1.1, xFrom: -2.7, xTo: -0.9 },
-          { z: 3.1, xFrom: -2.7, xTo: -0.9 },
-          { z: -2.8, xFrom: 0.9, xTo: 2.7 },
-          { z: -0.9, xFrom: 0.9, xTo: 2.7 },
-          { z: 1.1, xFrom: 0.9, xTo: 2.7 },
-          { z: 3.1, xFrom: 0.9, xTo: 2.7 },
+          { z: -4.4, xFrom: -2.9, xTo: -1.2 },
+          { z: -1.7, xFrom: -2.9, xTo: -1.2 },
+          { z: 1.0, xFrom: -2.9, xTo: -1.2 },
+          { z: 3.6, xFrom: -2.9, xTo: -1.2 },
+          { z: -4.4, xFrom: 1.2, xTo: 2.9 },
+          { z: -1.7, xFrom: 1.2, xTo: 2.9 },
+          { z: 1.0, xFrom: 1.2, xTo: 2.9 },
+          { z: 3.6, xFrom: 1.2, xTo: 2.9 },
         ]}
       />
 
-      {/* Main plaza */}
+      {/* Main plaza — pushed south of the spine, sits on the axis */}
       <group position={[0, 0, 6.5]}>
         <Plaza />
       </group>
 
-      {/* Auditorium at the front */}
-      <group position={[0, 0, 10]}>
-        <Auditorium width={4.4} depth={2.2} />
+      {/* Auditorium at the front, on the same axis */}
+      <group position={[0, 0, 11]}>
+        <Auditorium width={5.2} depth={2.6} />
       </group>
 
       {/* Dome west of the plaza */}
-      <group position={[-6.2, 0, 6.5]}>
-        <Dome radius={1.4} />
+      <group position={[-6.6, 0, 6.5]}>
+        <Dome radius={1.6} />
       </group>
 
-      {/* Residential crescent */}
       <ResidentialCrescent />
 
-      {/* Parking canopies at the two south corners */}
-      <group position={[-9.5, 0, 8.4]} rotation={[0, 0.35, 0]}>
+      {/* Solar-panel parking canopies */}
+      <group position={[-9.7, 0, 8.6]} rotation={[0, 0.35, 0]}>
         <ParkingCanopy width={3.6} depth={1.7} posts={5} />
       </group>
-      <group position={[9.5, 0, 8.4]} rotation={[0, -0.35, 0]}>
+      <group position={[9.7, 0, 8.6]} rotation={[0, -0.35, 0]}>
         <ParkingCanopy width={3.6} depth={1.7} posts={5} />
       </group>
 

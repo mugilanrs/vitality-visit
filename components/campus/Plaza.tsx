@@ -12,99 +12,113 @@ import {
 } from "@/lib/materials";
 
 /**
- * Circular Main Plaza with a central fountain and radial paving. Water is
- * handled by <WaterBodies/>; Plaza itself is the hardscape + fountain.
+ * Main plaza with a strong central AXIS:
+ *   spine → wide walkway → circular plaza → walkway → auditorium
+ *
+ * Phase 2 refined geometry:
+ *   - The plaza sits on a raised disc with two concentric ring accents
+ *   - The north–south axis is a wide, clearly readable concrete strip
+ *   - The fountain has a stepped base
+ *   - Water and radial paving frame the axis rather than compete with it
  */
 
 export default function Plaza() {
   return (
     <group>
-      {/* Outer plaza pad — a wide concrete disc */}
+      {/* Wide N–S pedestrian axis strip — clearly visible from the ortho camera */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.035, 0]}
+        position={[0, 0.028, -3]}
+        material={M_CONCRETE_LIGHT}
+      >
+        <planeGeometry args={[1.6, 3.4]} />
+      </mesh>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.028, 3]}
+        material={M_CONCRETE_LIGHT}
+      >
+        <planeGeometry args={[1.6, 3.4]} />
+      </mesh>
+
+      {/* Plaza disc — raised concrete pad, wider than v1 */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.045, 0]}
         material={M_CONCRETE_LIGHT}
         receiveShadow
       >
-        <circleGeometry args={[1.9, 64]} />
+        <circleGeometry args={[2.0, 64]} />
       </mesh>
 
-      {/* Inner ring accent (a subtle darker ring paving) */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.04, 0]}
-        material={M_ROOF_RIM}
-      >
-        <ringGeometry args={[1.05, 1.15, 64]} />
-      </mesh>
+      {/* Concentric ring accents (subtle darker paving) */}
+      {[0.7, 1.35, 1.85].map((r, i) => (
+        <mesh
+          key={i}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.055, 0]}
+          material={M_ROOF_RIM}
+        >
+          <ringGeometry args={[r, r + 0.05, 64]} />
+        </mesh>
+      ))}
 
-      {/* Radial paving lines — 8 thin dark strips extending from centre */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const a = (i / 8) * Math.PI * 2;
+      {/* Radial paving — thin dark strips from centre to plaza edge */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i / 12) * Math.PI * 2;
         return (
           <mesh
             key={i}
             rotation={[-Math.PI / 2, 0, a]}
-            position={[0, 0.041, 0]}
+            position={[0, 0.052, 0]}
             material={M_ROOF_RIM}
           >
-            <planeGeometry args={[0.06, 1.8]} />
+            <planeGeometry args={[0.04, 1.9]} />
           </mesh>
         );
       })}
 
-      {/* Fountain basin — a shallow cylinder rim */}
-      <mesh castShadow receiveShadow position={[0, 0.08, 0]} material={M_ROOF_WHITE}>
-        <cylinderGeometry args={[0.5, 0.55, 0.12, 32]} />
+      {/* Fountain — stepped white base */}
+      <mesh castShadow receiveShadow position={[0, 0.11, 0]} material={M_ROOF_WHITE}>
+        <cylinderGeometry args={[0.6, 0.68, 0.12, 40]} />
+      </mesh>
+      <mesh castShadow receiveShadow position={[0, 0.19, 0]} material={M_ROOF_WHITE}>
+        <cylinderGeometry args={[0.42, 0.58, 0.1, 40]} />
       </mesh>
       {/* Water inside basin */}
-      <mesh position={[0, 0.145, 0]} material={M_WATER}>
-        <cylinderGeometry args={[0.42, 0.42, 0.02, 32]} />
+      <mesh position={[0, 0.25, 0]} material={M_WATER}>
+        <cylinderGeometry args={[0.36, 0.36, 0.02, 40]} />
       </mesh>
 
-      {/* Fountain jet — solid white plume so it reads against sky/ground */}
-      <mesh position={[0, 0.55, 0]}>
+      {/* Fountain jet — solid white plume */}
+      <mesh position={[0, 0.62, 0]}>
         <cylinderGeometry args={[0.05, 0.09, 0.85, 12]} />
         <meshStandardMaterial color={COLORS.whiteShellCool} roughness={0.6} />
       </mesh>
-      <mesh position={[0, 1.0, 0]}>
+      <mesh position={[0, 1.05, 0]}>
         <sphereGeometry args={[0.13, 12, 8]} />
         <meshStandardMaterial color={COLORS.whiteShellCool} roughness={0.6} />
       </mesh>
 
-      {/* Small lamp bollards around the plaza edge */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 16;
+      {/* Lamp bollards ringing the plaza edge */}
+      {Array.from({ length: 10 }).map((_, i) => {
+        const a = (i / 10) * Math.PI * 2 + Math.PI / 20;
         return (
-          <group key={i} position={[Math.cos(a) * 1.72, 0, Math.sin(a) * 1.72]}>
-            <mesh material={M_METAL_DARK} position={[0, 0.18, 0]}>
-              <cylinderGeometry args={[0.03, 0.05, 0.35, 6]} />
+          <group key={i} position={[Math.cos(a) * 1.85, 0, Math.sin(a) * 1.85]}>
+            <mesh material={M_METAL_DARK} position={[0, 0.19, 0]}>
+              <cylinderGeometry args={[0.03, 0.05, 0.38, 6]} />
             </mesh>
-            <mesh position={[0, 0.4, 0]}>
+            <mesh position={[0, 0.42, 0]}>
               <sphereGeometry args={[0.06, 8, 6]} />
-              <meshStandardMaterial color={COLORS.whiteShellCool} emissive={COLORS.whiteShellCool} emissiveIntensity={0.3} />
+              <meshStandardMaterial
+                color={COLORS.whiteShellCool}
+                emissive={COLORS.whiteShellCool}
+                emissiveIntensity={0.25}
+              />
             </mesh>
           </group>
         );
       })}
-
-      {/* Pedestrian path from plaza south toward auditorium */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.033, 2.3]}
-        material={M_CONCRETE_LIGHT}
-      >
-        <planeGeometry args={[1.4, 2.6]} />
-      </mesh>
-
-      {/* Path north to spine */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.033, -2.1]}
-        material={M_CONCRETE_LIGHT}
-      >
-        <planeGeometry args={[1.2, 2.0]} />
-      </mesh>
     </group>
   );
 }

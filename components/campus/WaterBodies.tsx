@@ -3,69 +3,82 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { M_WATER } from "@/lib/materials";
-import { ringShape } from "@/lib/geometry";
+import { designedPondShape } from "@/lib/geometry";
 
 /**
- * Campus water surfaces. Rendered as flat filled shapes just above the grass
- * layer so they read cleanly from the ortho camera.
+ * Campus water surfaces — refined so they read as intentionally designed
+ * shapes framing the architecture:
+ *   - Plaza water: a smooth ring that hugs the plaza + spine axis, punched
+ *     out where the plaza and axis pass through
+ *   - Residential lake: a soft kidney-bean rather than a plain ellipse
  */
 
 export default function WaterBodies() {
-  // Plaza teardrop lake — outer teardrop with the plaza circle punched out.
-  const plazaRing = useMemo(() => {
-    const outer = new THREE.Shape();
-    const steps = 96;
-    const rx = 3.8;
-    const rz = 3.2;
+  // Plaza water ring — outer teardrop with an inner hole for the plaza,
+  // plus notches carved along the N–S axis so the axis reads as unbroken land.
+  const plazaWater = useMemo(() => {
+    const s = new THREE.Shape();
+    const steps = 128;
+    const rx = 4.1;
+    const rz = 3.4;
     for (let i = 0; i <= steps; i++) {
       const a = (i / steps) * Math.PI * 2;
-      // Slight teardrop taper toward +z
-      const warp = 1 + Math.max(0, Math.sin(a)) * 0.15;
+      // subtle north-warp so the ring pinches toward the spine
+      const warp = 1 + 0.15 * Math.max(0, -Math.sin(a));
       const x = Math.cos(a) * rx;
       const z = Math.sin(a) * rz * warp;
-      if (i === 0) outer.moveTo(x, z);
-      else outer.lineTo(x, z);
+      if (i === 0) s.moveTo(x, z);
+      else s.lineTo(x, z);
     }
-    // Punch a circular hole where the plaza sits
+    // Central plaza cutout
     const hole = new THREE.Path();
     for (let i = 0; i <= steps; i++) {
       const a = (i / steps) * Math.PI * 2;
-      const r = 2.0;
+      const r = 2.1;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
       if (i === 0) hole.moveTo(x, z);
       else hole.lineTo(x, z);
     }
-    outer.holes.push(hole);
-    return outer;
-  }, []);
+    s.holes.push(hole);
 
-  // Residential lake — larger free-form ellipse (no hole)
-  const residentialLake = useMemo(() => {
-    const s = new THREE.Shape();
-    const steps = 80;
-    for (let i = 0; i <= steps; i++) {
-      const a = (i / steps) * Math.PI * 2;
-      const rx = 2.6;
-      const rz = 1.9;
-      const x = Math.cos(a) * rx;
-      const z = Math.sin(a) * rz;
-      if (i === 0) s.moveTo(x, z);
-      else s.lineTo(x, z);
-    }
+    // North-axis carve (spine walkway passes through)
+    const northAxis = new THREE.Path();
+    northAxis.moveTo(-0.85, -3.5);
+    northAxis.lineTo(0.85, -3.5);
+    northAxis.lineTo(0.85, -2.0);
+    northAxis.lineTo(-0.85, -2.0);
+    northAxis.closePath();
+    s.holes.push(northAxis);
+
+    // South-axis carve (walkway to auditorium)
+    const southAxis = new THREE.Path();
+    southAxis.moveTo(-0.85, 2.0);
+    southAxis.lineTo(0.85, 2.0);
+    southAxis.lineTo(0.85, 3.5);
+    southAxis.lineTo(-0.85, 3.5);
+    southAxis.closePath();
+    s.holes.push(southAxis);
+
     return s;
   }, []);
 
+  // Residential lake — designed kidney bean
+  const residentialLake = useMemo(
+    () => designedPondShape(2.7, 2.0, 0.18),
+    [],
+  );
+
   return (
     <group>
-      {/* Plaza lake — sits above the grass */}
+      {/* Plaza water */}
       <group position={[0, 0.02, 6.5]}>
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           material={M_WATER}
           receiveShadow
         >
-          <shapeGeometry args={[plazaRing]} />
+          <shapeGeometry args={[plazaWater]} />
         </mesh>
       </group>
 

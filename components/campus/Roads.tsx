@@ -11,9 +11,9 @@ import { M_ROAD, M_ROAD_STRIPE } from "@/lib/materials";
  * without going into full paving detail (Phase 3).
  */
 
-const RING_RX = 13.4;
-const RING_RZ = 11.4;
-const RING_HALF_WIDTH = 0.75;
+const RING_RX = 13.6;
+const RING_RZ = 11.6;
+const RING_HALF_WIDTH = 0.5;
 
 // Build ring-road geometry from an elliptical shape with an inner hole.
 function useRingRoadGeometry() {
@@ -83,24 +83,24 @@ export default function Roads() {
       />
       <CentreStripes />
 
-      {/* Central boulevard, south from the plaza to the entrance */}
+      {/* Central boulevard, south from the auditorium to the entrance */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.009, 11]}
+        position={[0, 0.009, 12.2]}
         material={M_ROAD}
         receiveShadow
       >
-        <planeGeometry args={[2.2, 5.0]} />
+        <planeGeometry args={[1.6, 4.4]} />
       </mesh>
       {/* Dashed centre line on the boulevard */}
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <mesh
           key={`b-${i}`}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0.012, 9.2 + i * 0.55]}
+          position={[0, 0.012, 10.5 + i * 0.55]}
           material={M_ROAD_STRIPE}
         >
-          <planeGeometry args={[0.1, 0.28]} />
+          <planeGeometry args={[0.08, 0.24]} />
         </mesh>
       ))}
     </group>

@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-import * as THREE from "three";
 import {
   M_WHITE_SHELL,
   M_ROOF_WHITE,
@@ -11,93 +9,74 @@ import {
 } from "@/lib/materials";
 
 /**
- * Panelized dome building — a distinct architectural landmark on the west
- * side of the plaza (per the reference image).
+ * Smooth low-profile dome pavilion (west of the plaza).
  *
- * Composition:
- *   1. Low circular concrete base
- *   2. Cylindrical entry ring with glass panels
- *   3. Panelized dome — icosahedron with FLAT shading so panels are visible
- *   4. Ring rim where the dome meets the base
+ * Phase 2 refined massing:
+ *   - Broad low circular architectural base (not just a plate)
+ *   - Cylindrical entry ring with glass walls and a small entry portal
+ *   - Smooth SphereGeometry half — no more panelised faceted look
+ *   - Central skylight cap
+ *
+ * The dome is low-profile: wider than tall, so it reads as an architectural
+ * pavilion, not an oversized ball.
  */
 
 type Props = {
   radius?: number;
 };
 
-export default function Dome({ radius = 1.4 }: Props) {
-  const domeGeom = useMemo(() => {
-    // Icosahedron with detail 1 → 80 faces, low-poly but reads as panelised.
-    const g = new THREE.IcosahedronGeometry(radius, 1);
-    g.computeVertexNormals();
-    // Flatten normals so each face reads distinctly.
-    // (three's computeVertexNormals gives smooth normals; we want flat)
-    const posAttr = g.getAttribute("position");
-    const normAttr = g.getAttribute("normal");
-    for (let i = 0; i < posAttr.count; i += 3) {
-      const ax = posAttr.getX(i);
-      const ay = posAttr.getY(i);
-      const az = posAttr.getZ(i);
-      const bx = posAttr.getX(i + 1);
-      const by = posAttr.getY(i + 1);
-      const bz = posAttr.getZ(i + 1);
-      const cx = posAttr.getX(i + 2);
-      const cy = posAttr.getY(i + 2);
-      const cz = posAttr.getZ(i + 2);
-      // Face normal (cross product of edges)
-      const ux = bx - ax, uy = by - ay, uz = bz - az;
-      const vx = cx - ax, vy = cy - ay, vz = cz - az;
-      let nx = uy * vz - uz * vy;
-      let ny = uz * vx - ux * vz;
-      let nz = ux * vy - uy * vx;
-      const l = Math.hypot(nx, ny, nz) || 1;
-      nx /= l; ny /= l; nz /= l;
-      normAttr.setXYZ(i, nx, ny, nz);
-      normAttr.setXYZ(i + 1, nx, ny, nz);
-      normAttr.setXYZ(i + 2, nx, ny, nz);
-    }
-    normAttr.needsUpdate = true;
-    return g;
-  }, [radius]);
+export default function Dome({ radius = 1.6 }: Props) {
+  const baseR = radius * 1.3;
 
   return (
     <group>
-      {/* Low base plate */}
-      <mesh receiveShadow position={[0, 0.03, 0]} material={M_CONCRETE_LIGHT}>
-        <cylinderGeometry args={[radius * 1.5, radius * 1.6, 0.06, 40]} />
+      {/* Broad low base plate */}
+      <mesh receiveShadow castShadow position={[0, 0.04, 0]} material={M_CONCRETE_LIGHT}>
+        <cylinderGeometry args={[baseR + 0.15, baseR + 0.3, 0.08, 40]} />
       </mesh>
 
-      {/* Circular entry ring (glass-walled) */}
-      <mesh castShadow receiveShadow position={[0, 0.28, 0]} material={M_WHITE_SHELL}>
-        <cylinderGeometry args={[radius * 1.12, radius * 1.15, 0.48, 40, 1, true]} />
-      </mesh>
-      <mesh position={[0, 0.28, 0]} material={M_TEAL_GLASS}>
-        <cylinderGeometry args={[radius * 1.08, radius * 1.1, 0.4, 40, 1, true]} />
+      {/* Architectural base ring — taller, slightly narrower than base plate */}
+      <mesh castShadow receiveShadow position={[0, 0.24, 0]} material={M_WHITE_SHELL}>
+        <cylinderGeometry args={[baseR, baseR, 0.32, 40]} />
       </mesh>
 
-      {/* Rim where the dome meets the base */}
-      <mesh position={[0, 0.53, 0]} material={M_ROOF_RIM}>
-        <torusGeometry args={[radius * 1.02, 0.04, 8, 40]} />
+      {/* Glass entry ring — set INSIDE the base ring so glass reads recessed */}
+      <mesh position={[0, 0.24, 0]} material={M_TEAL_GLASS}>
+        <cylinderGeometry args={[baseR * 0.98, baseR * 0.98, 0.24, 40, 1, true]} />
       </mesh>
 
-      {/* Panelized dome (upper half only) */}
+      {/* Small entry portal — a low box breaking the ring on +z */}
+      <mesh castShadow receiveShadow position={[0, 0.24, baseR + 0.05]} material={M_WHITE_SHELL}>
+        <boxGeometry args={[0.9, 0.36, 0.4]} />
+      </mesh>
+      <mesh position={[0, 0.22, baseR + 0.25]} material={M_TEAL_GLASS}>
+        <boxGeometry args={[0.7, 0.28, 0.02]} />
+      </mesh>
+
+      {/* Rim ring where the dome meets the base (thin darker torus) */}
+      <mesh position={[0, 0.42, 0]} material={M_ROOF_RIM}>
+        <torusGeometry args={[baseR, 0.035, 8, 48]} />
+      </mesh>
+
+      {/* SMOOTH low-profile dome — sphere scaled down in Y so it's flatter */}
       <mesh
         castShadow
         receiveShadow
-        position={[0, 0.53, 0]}
+        position={[0, 0.42, 0]}
+        scale={[baseR / radius, (baseR * 0.55) / radius, baseR / radius]}
         material={M_ROOF_WHITE}
-        geometry={domeGeom}
-      />
-
-      {/* Flatten the bottom of the dome so we don't see through it */}
-      <mesh position={[0, 0.53 - radius * 0.5, 0]}>
-        <cylinderGeometry args={[radius, radius, 0.02, 40]} />
-        <meshStandardMaterial visible={false} />
+      >
+        <sphereGeometry args={[radius, 40, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
       </mesh>
 
-      {/* Small skylight cap at the top */}
-      <mesh position={[0, 0.55 + radius * 0.98, 0]} material={M_TEAL_GLASS}>
-        <sphereGeometry args={[radius * 0.15, 12, 8]} />
+      {/* Skylight cap — small glass sphere at the apex */}
+      <mesh position={[0, 0.42 + baseR * 0.55, 0]} material={M_TEAL_GLASS}>
+        <sphereGeometry args={[radius * 0.14, 20, 14]} />
+      </mesh>
+
+      {/* Thin white cap ring around the skylight */}
+      <mesh position={[0, 0.42 + baseR * 0.53, 0]} material={M_ROOF_WHITE}>
+        <torusGeometry args={[radius * 0.16, 0.02, 8, 32]} />
       </mesh>
     </group>
   );
