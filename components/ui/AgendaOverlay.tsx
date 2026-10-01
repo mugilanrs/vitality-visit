@@ -8,7 +8,6 @@ import {
 import {
   journey,
   subscribeJourney,
-  openFloor,
   openRoom,
   enterRoom,
   focusBack,
@@ -94,12 +93,10 @@ export default function AgendaOverlay() {
           bottom: "calc(max(1.5rem, env(safe-area-inset-bottom)) + 0.75rem)",
         }}
       >
-        {/* EB3's building level is presented by the in-scene EB3Cutaway,
-            so no DOM card is needed there. Other buildings would fall
-            through to the DOM card. */}
-        {focus.level === "building" && building && building.id !== "eb3" && (
-          <BuildingCard building={building} />
-        )}
+        {/* EB3's building level is presented by the in-scene EB3Cutaway; the
+            Signature Tower is direct-entry — neither needs a DOM card at the
+            building level. After PHASE 10 no other building is interactive,
+            so the building-level card is removed entirely. */}
         {focus.level === "floor" && building && floor && (
           <FloorCard building={building} floor={floor} />
         )}
@@ -119,40 +116,6 @@ export default function AgendaOverlay() {
 }
 
 // ---------------- Cards ----------------
-
-function BuildingCard({ building }: { building: BuildingSpec }) {
-  return (
-    <GlassCard>
-      <SectionHeading kicker={building.subtitle} title={building.name} />
-      <div className="mt-6 flex flex-col gap-3 md:flex-row md:gap-4">
-        {building.floors.map((f) => (
-          <button
-            key={f.index}
-            type="button"
-            onClick={() => openFloor(f.index)}
-            className="group flex-1 rounded-2xl border border-white/40 p-4 text-left backdrop-blur-lg transition-all hover:-translate-y-0.5 focus:outline-none"
-            style={{
-              background:
-                "linear-gradient(140deg, rgba(255,230,238,0.5) 0%, rgba(244,163,193,0.28) 100%)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
-            }}
-          >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-slate-700/85">
-              {f.label}
-            </div>
-            <div className="mt-1 text-lg font-light uppercase tracking-[0.14em] text-slate-900">
-              {f.name}
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.26em] text-slate-700/80">
-              <span>{f.rooms.length === 1 ? "1 room" : `${f.rooms.length} rooms`}</span>
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </div>
-          </button>
-        ))}
-      </div>
-    </GlassCard>
-  );
-}
 
 function FloorCard({
   building,

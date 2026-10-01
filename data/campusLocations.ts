@@ -1,12 +1,14 @@
 import type { CameraState } from "@/lib/camera";
-import { BUILDINGS, BUILDING_ORDER, BLOCK_X, BLOCK_ROWS } from "@/data/buildings";
+import { BUILDINGS, MARKER_BUILDINGS } from "@/data/buildings";
 
 /**
- * PHASE 8 — the scroll journey now mirrors the six primary blocks.
+ * PHASE 10 — the scroll journey is now narrow: overview → EB3 → Signature
+ * Tower. The other four primary blocks stay in the frame as architecture,
+ * but the scroll tour and the agenda no longer stop at them — only the two
+ * interactive destinations are represented.
  *
- * The pink glass tiles are the primary interaction path; scrolling is a
- * secondary "guided tour" that visits the overview and each of the six
- * blocks in reading order.
+ * The pink glass markers remain the primary interaction path; scrolling is
+ * a secondary "guided tour" that visits only the interactive destinations.
  */
 
 export type AgendaMeta = {
@@ -35,28 +37,27 @@ function from(target: readonly [number, number, number], zoom: number): CameraSt
   };
 }
 
-export const CAMPUS_LOCATIONS: CampusLocation[] = [
-  {
-    id: "overview",
-    name: "Campus Overview",
-    camera: from([0, 1.4, 1.5], 0.82),
-    agenda: {
-      step: "00",
-      title: "Campus Overview",
-      time: "",
-      host: "",
-      tags: ["Overview"],
-      desc: "The full architectural masterplan — six primary blocks arranged bilaterally around the central spine, framed by the entrance lake.",
-    },
+const OVERVIEW: CampusLocation = {
+  id: "overview",
+  name: "Campus Overview",
+  camera: from([0, 1.4, 1.5], 0.82),
+  agenda: {
+    step: "00",
+    title: "Campus Overview",
+    time: "",
+    host: "",
+    tags: ["Overview"],
+    desc: "The full architectural masterplan — six primary blocks arranged bilaterally around the central spine, framed by the entrance lake.",
   },
-  // The scroll tour then visits each of the six primary blocks.
-  ...BUILDING_ORDER.map((id, i) => {
+};
+
+export const CAMPUS_LOCATIONS: CampusLocation[] = [
+  OVERVIEW,
+  // The scroll tour then visits only the two interactive destinations.
+  ...MARKER_BUILDINGS.map((id, i) => {
     const b = BUILDINGS[id];
-    const target: [number, number, number] = [
-      b.side === "left" ? -BLOCK_X : BLOCK_X,
-      1.1,
-      BLOCK_ROWS[b.row],
-    ];
+    const [tx, , tz] = b.basePosition;
+    const target: [number, number, number] = [tx, 1.1, tz];
     return {
       id: b.id,
       name: b.name,

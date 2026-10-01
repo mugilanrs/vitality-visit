@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BUILDING_ORDER, BUILDINGS } from "@/data/buildings";
+import { MARKER_BUILDINGS, BUILDINGS } from "@/data/buildings";
 import { journey, subscribeJourney } from "@/lib/journey";
 
 /**
- * PHASE 8 — tiny world-space annotation dots under each block.
+ * PHASE 10 — ground-plane annotation only under the two interactive
+ * destinations (EB3 + Signature Tower). The other four primary blocks
+ * are architecture only and no longer wear a hotspot ring.
  *
- * These are NOT interactive. The click surface is the pink glass tile
- * (SpatialTiles), so we can never end up in a hover-race between two
- * on-ground markers. Each dot is a soft pink disc that fades when the
- * user drills into a building.
+ * These rings are NOT interactive. The click surface is the pink glass
+ * marker (SpatialTiles), so we can never end up in a hover-race between
+ * a marker and an on-ground ring.
  */
 export default function CampusHotspots() {
   const [visible, setVisible] = useState(journey.focus.level === "campus");
@@ -23,8 +24,9 @@ export default function CampusHotspots() {
 
   return (
     <group visible={visible}>
-      {BUILDING_ORDER.map((id) => {
+      {MARKER_BUILDINGS.map((id) => {
         const b = BUILDINGS[id];
+        if (!b) return null;
         const [x, , z] = b.basePosition;
         return (
           <group key={id} position={[x, 0.02, z]} raycast={() => null}>

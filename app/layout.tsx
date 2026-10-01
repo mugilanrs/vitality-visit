@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vitality Campus — Interactive 2.5D Map",
+  title: "TCS Campus — Interactive 2.5D Map",
   description:
-    "A digital architectural exhibition of the Vitality campus — explore the site through a cinematic 2.5D journey.",
+    "A digital architectural exhibition of the TCS campus — explore the site through a cinematic 2.5D journey.",
 };
 
 export const viewport = {

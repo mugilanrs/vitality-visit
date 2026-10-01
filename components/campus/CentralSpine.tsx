@@ -15,6 +15,7 @@ import {
   M_GRASS,
 } from "@/lib/materials";
 import { spineLeafShape } from "@/lib/geometry";
+import { SPINE_LEN as SPINE_LEN_SHARED, TOWER_HEIGHT } from "@/data/buildings";
 
 /**
  * The Central Spine — the dominant campus landmark.
@@ -41,7 +42,9 @@ import { spineLeafShape } from "@/lib/geometry";
  *   7. Tower at the north end
  */
 
-const SPINE_LEN = 12.4;        // longer, more elongated
+// Kept in sync with the data-registry constants so tower positioning and
+// marker anchoring agree with what CentralSpine actually renders.
+const SPINE_LEN = SPINE_LEN_SHARED;
 const SPINE_WID = 2.2;         // slightly wider so it reads as a real building
 const WALL_HEIGHT = 1.9;       // atrium wall height
 const ROOF_Y = 2.05;           // where the roof starts
@@ -236,9 +239,11 @@ export default function CentralSpine() {
         />
       </mesh>
 
-      {/* 7. Tower at the north end of the spine */}
+      {/* 7. Tower at the north end of the spine. Height is imported from the
+             data registry so the tower marker (data/buildings.ts:markerPosition)
+             sits exactly at the crown tip. */}
       <group position={[0, 0, -SPINE_LEN / 2 - 0.2]}>
-        <Tower height={8.0} />
+        <Tower height={TOWER_HEIGHT} />
       </group>
     </group>
   );

@@ -80,10 +80,10 @@ export const BLOCK_SIZE = {
   floorHeight: 0.38,
 };
 
-const SPINE_LEN = 12.4;
-const TOWER_X = 0;
-const TOWER_Z = -SPINE_LEN / 2 - 0.2;
-const TOWER_HEIGHT = 9.0;
+export const SPINE_LEN = 12.4;
+export const TOWER_X = 0;
+export const TOWER_Z = -SPINE_LEN / 2 - 0.2;
+export const TOWER_HEIGHT = 9.0;
 
 // Interior scenes live off-campus so the shared camera can travel to them
 // without colliding with the campus geometry.
