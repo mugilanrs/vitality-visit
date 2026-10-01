@@ -244,6 +244,17 @@ export const BUILDING_EB3: BuildingSpec = makeBlock(
 
 // ---------------- Signature Tower — direct entry to dining ----------------
 
+/**
+ * Y of the Signature Tower's crown centre. Derived from the same formula
+ * `height * 0.82` that Tower.tsx uses to position the saucer disc, so the
+ * marker anchor and the geometry never drift. Anchoring HERE (instead of
+ * above the spire tip at y ≈ TOWER_HEIGHT + 0.4) also means the marker
+ * projects well inside the viewport on all landscape aspect ratios — the
+ * previous 9.4 anchor projected to y ≈ 30-50 px from the top on 1280×720
+ * and 1920×1080, which clipped the pill above the viewport.
+ */
+export const TOWER_CROWN_Y = TOWER_HEIGHT * 0.82;
+
 export const BUILDING_SIGNATURE_TOWER: BuildingSpec = {
   id: "signature-tower",
   name: "Signature Tower",
@@ -252,7 +263,7 @@ export const BUILDING_SIGNATURE_TOWER: BuildingSpec = {
   side: "right",
   row: "rear",
   camera: fromTarget([TOWER_X, 4.5, TOWER_Z], 1.6),
-  markerPosition: [TOWER_X, TOWER_HEIGHT + 0.4, TOWER_Z],
+  markerPosition: [TOWER_X, TOWER_CROWN_Y, TOWER_Z],
   basePosition: [TOWER_X, 0, TOWER_Z],
   directEntry: true,
   floors: [
